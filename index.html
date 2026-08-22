@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>植物大战僵尸 · 简化版</title>
+<style>
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:"Comic Sans MS","幼圆","YouYuan","PingFang SC","Microsoft YaHei",sans-serif;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,.5), transparent 35%),
+      radial-gradient(circle at 80% 80%, rgba(255,240,180,.4), transparent 30%),
+      linear-gradient(180deg,#8fd0f0 0%, #bfe8f8 45%, #eefbe8 100%);
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:14px;
+    color:#2c4a3b; user-select:none;
+  }
+  #app{width:100%; max-width:1040px;}
+
+  /* ============ 菜单 ============ */
+  .screen{background:rgba(255,255,255,.92); border-radius:26px; box-shadow:0 14px 40px rgba(30,70,50,.25);
+    padding:26px 20px; text-align:center;}
+  .screen h1{font-size:clamp(28px,6vw,48px); letter-spacing:3px; color:#2e7d32; text-shadow:2px 2px 0 #fff,4px 4px 0 rgba(0,0,0,.08);}
+  .screen .sub{color:#5a7d6d; margin:8px 0 18px; font-size:14px;}
+  #levelBtns{display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:10px 0 14px;}
+  .lvlbtn{
+    font-family:inherit; cursor:pointer; border:none; border-radius:16px; padding:14px 20px; min-width:150px;
+    background:linear-gradient(180deg,#fff,#e8f7e3); border:3px solid #9ed887; color:#2e5a3b;
+    font-size:16px; font-weight:bold; box-shadow:0 4px 10px rgba(46,90,59,.18); transition:transform .15s,box-shadow .15s;
+  }
+  .lvlbtn:hover{transform:translateY(-3px); box-shadow:0 8px 16px rgba(46,90,59,.25);}
+  .lvlbtn small{display:block; font-size:12px; color:#6b8f7a; font-weight:normal; margin-top:4px;}
+  .tip{font-size:13px; color:#7a8f83; background:#f0faf0; border:2px dashed #bfe3b0; border-radius:12px; padding:10px 14px; display:inline-block; max-width:640px; line-height:1.7;}
+
+  /* ============ 游戏界面 ============ */
+  #game .box{position:relative;}
+  #hud{display:flex; align-items:stretch; gap:8px; background:rgba(50,80,50,.92); border-radius:18px 18px 0 0;
+    padding:10px 12px; flex-wrap:wrap;}
+  #sunbox{background:#ffd83d; color:#6b4d00; border-radius:12px; padding:6px 12px; font-size:20px; font-weight:bold;
+    display:flex; align-items:center; gap:6px; box-shadow:inset 0 -3px 0 rgba(0,0,0,.15);}
+  #cards{display:flex; gap:6px; flex-wrap:wrap; flex:1;}
+  .card{position:relative; width:64px; cursor:pointer; border:none; border-radius:10px; overflow:hidden;
+    background:linear-gradient(180deg,#fff,#eef6ea); border:2px solid #7cb865; padding:4px 2px; font-family:inherit;
+    transition:transform .1s; box-shadow:0 3px 6px rgba(0,0,0,.2);}
+  .card:hover{transform:translateY(-2px);}
+  .card.sel{outline:3px solid #ffd83d; transform:translateY(-4px);}
+  .card.off{filter:grayscale(.9); opacity:.7;}
+  .card .cemoji{font-size:24px; line-height:1.1;}
+  .card .cname{font-size:10px; font-weight:bold; color:#2e5a3b;}
+  .card .ccost{font-size:11px; font-weight:bold; color:#c47f00;}
+  .card .ckey{position:absolute; top:1px; left:4px; font-size:9px; color:#aaa;}
+  .card .cd{position:absolute; left:0; right:0; bottom:0; background:rgba(80,80,80,.62); pointer-events:none; transition:height .1s linear;}
+  .tool{border:none; border-radius:10px; width:48px; cursor:pointer; font-size:20px; font-family:inherit; font-weight:bold;
+    background:linear-gradient(180deg,#fff,#f2efe6); border:2px solid #c9b98a; color:#8a6d3b; box-shadow:0 3px 6px rgba(0,0,0,.2);}
+  .tool.sel{outline:3px solid #ffd83d;}
+  .tool:hover{transform:translateY(-2px);}
+  #shovel{font-size:22px;}
+  #shovel .sname{font-size:10px; display:block; color:#8a6d3b;}
+  .btn-round{border:none; border-radius:10px; width:44px; cursor:pointer; font-size:18px;
+    background:linear-gradient(180deg,#fff,#e8ece6); border:2px solid #b8c4b2; box-shadow:0 3px 6px rgba(0,0,0,.2);}
+  .btn-round:hover{transform:translateY(-2px);}
+
+  #cvWrap{position:relative; background:#000; line-height:0;}
+  canvas{width:100%; display:block; border-radius:0 0 18px 18px;}
+  #bar{display:flex; align-items:center; gap:10px; background:rgba(50,80,50,.92); border-radius:0 0 18px 18px;
+    padding:8px 14px; color:#fff; font-size:14px; font-weight:bold;}
+  #progWrap{flex:1; height:14px; background:#24402b; border-radius:8px; overflow:hidden; border:1px solid #44664f;}
+  #progFill{height:100%; width:0%; background:linear-gradient(90deg,#7ed957,#43c24b); transition:width .3s;}
+  #zombieLeft{white-space:nowrap;}
+
+  /* 覆盖层 */
+  #overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;
+    background:rgba(20,30,25,.55); backdrop-filter:blur(3px); border-radius:0 0 18px 18px; z-index:5; text-align:center;}
+  #overlay.hidden{display:none;}
+  #overlay .card-panel{background:rgba(255,255,255,.96); border-radius:20px; padding:26px 36px; box-shadow:0 12px 40px rgba(0,0,0,.35); max-width:420px;}
+  #overlay h2{font-size:28px; margin-bottom:8px;}
+  #overlay p{color:#5a6f63; margin-bottom:14px; line-height:1.6;}
+  #overlay button{font-family:inherit; font-size:18px; font-weight:bold; border:none; cursor:pointer; padding:12px 34px; border-radius:99px;
+    background:linear-gradient(180deg,#7ed957,#3fa73f); color:#fff; box-shadow:0 5px 12px rgba(46,120,60,.35); transition:transform .15s;}
+  #overlay button:hover{transform:translateY(-2px);}
+
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- 菜单 -->
+  <div id="menu" class="screen">
+    <h1>🌻 植物大战僵尸 🧟</h1>
+    <p class="sub">简化版 · 消灭所有僵尸，保卫你的脑子！</p>
+    <div id="levelBtns"></div>
+    <div class="tip">
+      🧑‍🌾 戴夫会站在房子前给你提示。<br>
+      🪴 玩法：点击卡片选植物 → 点击绿色草地格子种植。<br>
+      ☀️ 点击阳光收集，向日葵也会产阳光。<br>
+      🚜 僵尸走到左侧会触发小车清行；小车用光后僵尸进屋就输了。<br>
+      🔢 快捷键 1~9、0、-、= 快速选卡，右键取消。
+    </div>
+  </div>
+
+  <!-- 游戏 -->
+  <div id="game" class="screen hidden">
+    <div class="box">
+      <div id="hud">
+        <div id="sunbox">☀️ <span id="sunCount">0</span></div>
+        <div id="cards"></div>
+        <button id="shovel" class="tool" title="铲子：移走植物">🪏<span class="sname">铲子</span></button>
+        <button id="restartBtn" class="btn-round" title="重新开始本关">🔄</button>
+        <button id="pauseBtn" class="btn-round" title="暂停 (P)">⏸</button>
+      </div>
+      <div id="cvWrap">
+        <canvas id="cv" width="1000" height="580"></canvas>
+        <div id="overlay" class="hidden"></div>
+      </div>
+      <div id="bar">
+        <span id="progText">第 1 关</span>
+        <div id="progWrap"><div id="progFill"></div></div>
+        <div id="zombieLeft">🧟 0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ==================== 常量与数据 ====================
+const COLS=9, ROWS=5, CELL=100, BT=60, BL=80;   // 棋盘 9x5
+const W=1000, H=580;
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function rr(x,y,w,h,r){   // 圆角矩形路径
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+const PLANTS={
+  sunflower:  {name:'向日葵',  cost:50,  cd:5,   hp:150, emoji:'🌻', desc:'定期产出阳光'},
+  peashooter: {name:'豌豆射手',cost:100, cd:5,   hp:150, emoji:'🫛', desc:'发射豌豆攻击'},
+  snowpea:    {name:'寒冰射手',cost:175, cd:7.5, hp:150, emoji:'🧊', desc:'豌豆附带减速'},
+  repeater:   {name:'双发射手',cost:200, cd:7.5, hp:150, emoji:'🔫', desc:'双倍火力'},
+  threepeater:{name:'三线射手',cost:300, cd:10,  hp:150, emoji:'🎯', desc:'同时打三行'},
+  cherrybomb: {name:'樱桃炸弹',cost:150, cd:20,  hp:150, emoji:'🍒', desc:'3x3 大爆炸'},
+  potatomine: {name:'土豆雷',  cost:25,  cd:15,  hp:150, emoji:'🥔', desc:'埋雷，僵尸踩上引爆'},
+  wallnut:    {name:'坚果墙',  cost:50,  cd:20,  hp:900, emoji:'🥜', desc:'超高血量挡路'},
+  spikeweed:  {name:'地刺',    cost:100, cd:6,   hp:150, emoji:'🦔', desc:'扎伤踩过去的僵尸'},
+  torchwood:  {name:'火炬树桩',cost:175, cd:7.5, hp:150, emoji:'🔥', desc:'豌豆穿过变火豌豆'},
+  melonpult:  {name:'西瓜投手',cost:300, cd:10,  hp:150, emoji:'🍉', desc:'抛物线范围攻击'},
+};
+const PLANT_ORDER=['sunflower','peashooter','snowpea','repeater','threepeater','cherrybomb','potatomine','wallnut','spikeweed','torchwood','melonpult'];
+
+const ZOMBIES={
+  normal:   {name:'普通僵尸',   hp:200, speed:13, dmg:30, biteCd:0.8},
+  cone:     {name:'路障僵尸',   hp:430, speed:13, dmg:30, biteCd:0.8},
+  bucket:   {name:'铁桶僵尸',   hp:780, speed:13, dmg:30, biteCd:0.8},
+  runner:   {name:'快速僵尸',   hp:180, speed:45, dmg:30, biteCd:0.8},
+  football: {name:'橄榄球僵尸', hp:950, speed:27, dmg:45, biteCd:0.7},
+};
+
+const PLANT_IMAGES={};
+function loadPlantImages(){
+  const map={sunflower:'images/sunflower.jpg',peashooter:'images/peashooter.jpg',cherrybomb:'images/cherrybomb.jpg',wallnut:'images/wallnut.jpg',spikeweed:'images/spikeweed.jpg',melonpult:'images/melonpult.jpg'};
+  for(const[type,src]of Object.entries(map)){ const img=new Image(); img.src=src; PLANT_IMAGES[type]=img; }
+}
+loadPlantImages();
+function drawPlantImage(p){
+  const img=PLANT_IMAGES[p.type];
+  if(!img||!img.complete||!img.naturalWidth) return false;
+  const s=72;
+  ctx.drawImage(img,-s/2,-s/2,s,s);
+  return true;
+}
+
+const LEVELS=[
+  {sun:150, waves:[
+    {at:15, groups:[{type:'normal',n:4,every:5}]},
+    {at:55, groups:[{type:'normal',n:5,every:4}]},
+    {at:100,groups:[{type:'normal',n:6,every:3}]},
+  ]},
+  {sun:175, waves:[
+    {at:12, groups:[{type:'normal',n:4,every:4}]},
+    {at:45, groups:[{type:'normal',n:2,every:2},{type:'cone',n:3,every:4}]},
+    {at:90, groups:[{type:'cone',n:4,every:3},{type:'normal',n:3,every:3}]},
+  ]},
+  {sun:175, waves:[
+    {at:10, groups:[{type:'normal',n:5,every:3.5}]},
+    {at:40, groups:[{type:'runner',n:4,every:2.5},{type:'cone',n:3,every:5}]},
+    {at:80, groups:[{type:'normal',n:4,every:2},{type:'runner',n:3,every:2.5}]},
+  ]},
+  {sun:200, waves:[
+    {at:12, groups:[{type:'normal',n:4,every:3},{type:'cone',n:2,every:6}]},
+    {at:45, groups:[{type:'bucket',n:3,every:5},{type:'cone',n:2,every:4}]},
+    {at:90, groups:[{type:'runner',n:3,every:2},{type:'bucket',n:3,every:4},{type:'normal',n:2,every:3}]},
+  ]},
+  {sun:200, waves:[
+    {at:10, groups:[{type:'normal',n:4,every:3},{type:'runner',n:2,every:3}]},
+    {at:40, groups:[{type:'football',n:3,every:4},{type:'bucket',n:2,every:5}]},
+    {at:85, groups:[{type:'football',n:3,every:3},{type:'bucket',n:3,every:4},{type:'cone',n:3,every:3}]},
+    {at:130,groups:[{type:'football',n:4,every:2.5},{type:'runner',n:3,every:2}]},
+  ]},
+];
+
+// ==================== 全局状态 ====================
+let screen='menu';          // menu | play | over
+let level=0, time=0, paused=false;
+let sun=150;
+let plants=[], zombies=[], projectiles=[], suns=[], mowers=[], effects=[];
+let spawnQueue=[], bannerTimes=[], banner=null;
+let selected=null;          // {kind:'card',type} | {kind:'shovel'} | null
+let totalZombies=0, killed=0;
+let sunFallTimer=0;
+let plantFoodDrops=[], plantFoodTimer=30, goldDrops=[], goldTimer=45, dragItem=null;
+const ATTACK_PLANTS=['peashooter','snowpea','repeater','threepeater','melonpult','potatomine','cherrybomb','spikeweed'];
+const pcd={};               // 冷却时间
+let mouse={x:-99,y:-99};
+
+// ==================== 工具函数 ====================
+const cellX=c=>BL+c*CELL, cellY=r=>BT+r*CELL;
+const cx=(r,c)=>BL+c*CELL+CELL/2, cy=(r,c)=>BT+r*CELL+CELL/2;
+function plantAt(r,c){ for(const p of plants) if(p.row===r&&p.col===c&&!p.dead) return p; return null; }
+function colAt(x){ return Math.floor((x-BL)/CELL); }
+function rowAt(y){ return Math.floor((y-BT)/CELL); }
+function cellFromXY(x,y){
+  if(x<BL||x>=BL+COLS*CELL||y<BT||y>=BT+ROWS*CELL) return null;
+  return {row:rowAt(y), col:colAt(x)};
+}
+function buildWaves(L){
+  const list=[];
+  L.waves.forEach(w=>{ w.groups.forEach(g=>{
+    for(let i=0;i<g.n;i++) list.push({t:w.at+i*g.every, type:g.type});
+  });});
+  list.sort((a,b)=>a.t-b.t);
+  return list;
+}
+
+// ==================== 关卡流程 ====================
+function startLevel(i){
+  level=i; const L=LEVELS[i];
+  screen='play'; paused=false;
+  sun=L.sun; time=0;
+  plants=[]; zombies=[]; projectiles=[]; suns=[]; effects=[]; plantFoodDrops=[]; goldDrops=[];
+  plantFoodTimer=30; goldTimer=45; spawnQueue=buildWaves(L);
+  bannerTimes=L.waves.map(w=>w.at).sort((a,b)=>a-b);
+  banner=null; selected=null;
+  totalZombies=spawnQueue.length; killed=0; sunFallTimer=3;
+  mowers=[]; for(let r=0;r<ROWS;r++) mowers.push({row:r, x:BL-52, active:false, gone:false});
+  for(const t in PLANTS) pcd[t]=0;
+  showScreen('play');
+  document.getElementById('progText').textContent='第 '+(level+1)+' 关';
+  updateHUD();
+  // 戴夫开场提示 + 新手教程（仅首次）
+  daveSay('🧑‍🌾 点击卡片选植物，再点草地格子种下！');
+  if(!localStorage.getItem('pvz_tut_v1')){
+    paused=true;
+    showOverlay('🧑‍🌾 戴夫的种植教程',
+      '① 点击下方卡片选择植物（先试 🌻 向日葵）<br>② 把鼠标移到棋盘<br>③ 点击绿色草地格子即可种下！<br>④ 点击掉落的 ☀️ 收集能量<br><br><small>右键或按 ESC 可取消选择</small>',
+      '开始种植！',()=>{ paused=false; document.getElementById('overlay').classList.add('hidden'); localStorage.setItem('pvz_tut_v1','1'); });
+  }
+}
+function showScreen(s){
+  document.getElementById('menu').classList.toggle('hidden', s!=='menu');
+  document.getElementById('game').classList.toggle('hidden', s!=='play'&&s!=='over');
+  if(s==='menu'){ screen='menu'; }
+  if(s==='play'){ screen='play'; }
+  document.getElementById('overlay').classList.add('hidden');
+}
+function showOverlay(title, desc, btnText, fn){
+  const ov=document.getElementById('overlay');
+  ov.innerHTML='<div class="card-panel"><h2>'+title+'</h2><p>'+desc+'</p><button id="ovBtn">'+btnText+'</button></div>';
+  ov.classList.remove('hidden');
+  ov.querySelector('#ovBtn').onclick=fn;
+}
+function winLevel(){
+  screen='over';
+  if(level>=LEVELS.length-1) showOverlay('🎉 全部通关！','你打败了所有僵尸，脑子保住了！','回到主菜单',()=>showScreen('menu'));
+  else showOverlay('🎉 胜利！','第 '+(level+2)+' 关已解锁','下一关',()=>startLevel(level+1));
+  sndWin();
+}
+function loseGame(){
+  if(screen!=='play') return;
+  screen='over'; sndLose();
+  showOverlay('🧟 僵尸吃掉了你的脑子！','再接再厉，重新布阵吧','重新开始',()=>startLevel(level));
+}
+
+// ==================== 生成与实体 ====================
+function bestRow(){
+  const counts=Array(ROWS).fill(0);
+  for(const z of zombies) if(!z.dead) counts[z.row]++;
+  let min=99, rows=[];
+  for(let r=0;r<ROWS;r++){ if(counts[r]<4){ if(counts[r]<min){min=counts[r]; rows=[r];} else if(counts[r]===min) rows.push(r); } }
+  if(!rows.length) rows=[0,1,2,3,4];
+  return rows[Math.floor(Math.random()*rows.length)];
+}
+function spawnZombie(type){
+  const Z=ZOMBIES[type];
+  const row=bestRow();
+  zombies.push({type,row, x:W+30, hp:Z.hp, maxHp:Z.hp, speed:Z.speed, dmg:Z.dmg,
+    biteCd:Z.biteCd, biteT:0, slow:0, wob:rnd(0,6.28), dead:false});
+}
+function addPlant(type,row,col){
+  const P=PLANTS[type];
+  const p={type,row,col, hp:P.hp, maxHp:P.hp, dead:false, t:0, armT:0, armed:false,
+    cx(){ return cx(this.row,this.col); },
+    cy(){ return cy(this.row,this.col); }};
+  if(type==='potatomine') p.armT=14;
+  if(type==='sunflower') p.t=rnd(3,6);
+  if(type==='peashooter'||type==='snowpea') p.t=1.2;
+  if(type==='repeater'){ p.t=0.3; p.burst=0; }
+  if(type==='threepeater') p.t=1.2;
+  if(type==='melonpult') p.t=2.5;
+  if(type==='cherrybomb') p.t=1.3;
+  if(type==='spikeweed') p.t=0.55;
+  plants.push(p);
+}
+function removePlant(p){ p.dead=true; }
+function killZombie(z){
+  if(z.dead) return;
+  z.dead=true; killed++;
+  effects.push({type:'poof',x:z.x+22,y:cy(z.row,0)-50+50,t:0.35});
+  if(Math.random()<0.13) suns.push({x:z.x+22, y:cy(z.row,0)-50+50, ty:cy(z.row,0)-50+60, val:25, t:9, fall:false});
+}
+function damageZombie(z,dmg){ z.hp-=dmg; if(z.hp<=0) killZombie(z); }
+
+function makeFallingSun(){ suns.push({x:rnd(BL+30,W-70), y:-30, ty:rnd(BT+10,BT+ROWS*CELL-20), val:25, t:10, fall:true}); }
+function spawnPlantFood(){
+  const r=Math.floor(Math.random()*ROWS), c=Math.floor(Math.random()*COLS);
+  plantFoodDrops.push({row:r, col:c, x:cx(r,c), y:cy(r,c)-35, t:0});
+}
+function spawnGold(){
+  const r=Math.floor(Math.random()*ROWS), c=Math.floor(Math.random()*COLS);
+  goldDrops.push({row:r, col:c, x:cx(r,c), y:cy(r,c)-35, t:0});
+}
+
+// ==================== 更新逻辑 ====================
+function update(dt){
+  if(screen!=='play'||paused) return;
+  time+=dt;
+  // 刷僵尸
+  while(spawnQueue.length && time>=spawnQueue[0].t){ spawnZombie(spawnQueue.shift().type); }
+  // 波次横幅
+  if(bannerTimes.length && time>=bannerTimes[0]){ bannerTimes.shift(); banner={t:2.5}; sndWave(); }
+  if(banner) banner.t-=dt;
+  // 戴夫唠叨
+  dave.t-=dt;
+  if(dave.t<=0) dave.say='';
+  dave.next-=dt;
+  if(dave.next<=0){ daveSay(DAVE_TIPS[Math.floor(Math.random()*DAVE_TIPS.length)]); dave.next=rnd(18,30); }
+  // 阳光掉落
+  sunFallTimer-=dt;
+  if(sunFallTimer<=0){ makeFallingSun(); sunFallTimer=rnd(8.5,11); }
+  updateSuns(dt);
+  updatePlants(dt);
+  updateProjectiles(dt);
+  updateZombies(dt);
+  updateMowers(dt);
+  updateEffects(dt);
+  // 能量豆 & 金克拉
+  plantFoodTimer-=dt;
+  if(plantFoodTimer<=0){ plantFoodTimer=30; plantFoodDrops=[]; spawnPlantFood(); }  // 每30秒必定刷新一粒
+  for(const pf of plantFoodDrops) pf.t+=dt;
+  plantFoodDrops=plantFoodDrops.filter(pf=>pf.t<5);   // 5秒无人拖拽就消失
+  goldTimer-=dt;
+  if(goldTimer<=0){ spawnGold(); goldTimer=45; }
+  for(const gd of goldDrops) gd.t+=dt;
+  goldDrops=goldDrops.filter(gd=>gd.t<8);
+  // 冷却
+  for(const t in pcd) pcd[t]=Math.max(0,pcd[t]-dt);
+  // 胜负判定
+  if(screen==='play' && spawnQueue.length===0 && zombies.every(z=>z.dead)) winLevel();
+  updateHUD();
+}
+function updateSuns(dt){
+  for(const s of suns){
+    s.t-=dt;
+    if(s.y<s.ty) s.y=Math.min(s.ty, s.y+75*dt);
+  }
+  suns=suns.filter(s=>s.t>-1);
+}
+function updatePlants(dt){
+  for(const p of plants){
+    if(p.dead) continue;
+    p.t-=dt;
+    if(p.powered>0) p.powered=Math.max(0,p.powered-dt);
+    switch(p.type){
+      case 'sunflower':
+        if(p.t<=0){ suns.push({x:p.cx()+rnd(-18,18), y:p.cy()+rnd(-16,4), ty:p.cy()+34, val:25, t:9, fall:false}); p.t=rnd(6.5,9.5); }
+        break;
+      case 'peashooter':
+        if(p.t<=0){ firePea(p, p.row); p.t=p.powered>0?0.3:1.5; }
+        break;
+      case 'snowpea':
+        if(p.t<=0){ firePea(p, p.row, 'snow'); p.t=p.powered>0?0.3:1.5; }
+        break;
+      case 'repeater':
+        if(p.t<=0){ firePea(p, p.row); p.burst=(p.burst||0)+1; p.t=p.burst>=2?(p.burst=0,(p.powered>0?0.3:1.4)):0.13; }
+        break;
+      case 'threepeater':
+        if(p.t<=0){
+          for(let r=Math.max(0,p.row-1);r<=Math.min(ROWS-1,p.row+1);r++) firePea(p,r,(r-p.row)*10);
+          p.t=p.powered>0?0.3:1.5;
+        }
+        break;
+      case 'melonpult':
+        if(p.t<=0){
+          const z=zombies.filter(z=>!z.dead&&z.row===p.row&&z.x>p.cx()-10).sort((a,b)=>a.x-b.x)[0];
+          if(z) lobMelon(p, z);
+          p.t=p.powered>0?0.52:2.6;
+        }
+        break;
+      case 'cherrybomb':
+        if(p.t<=0){ explodeAt(p.row,p.col,p.powered>0?9000:1800); effects.push({type:'boom',x:p.cx(),y:p.cy(),t:0.6}); p.dead=true; sndExplode(); }
+        break;
+      case 'potatomine':
+        if(p.armT>0){ p.armT-=dt; if(p.armT<=0) p.armed=true; }
+        if(p.armed){
+          const near=zombies.some(z=>!z.dead&&Math.abs(z.row-p.row)<=1&&Math.abs(colAt(z.x)-p.col)<=1&&z.x>BL-20);
+          if(near){ explodeAt(p.row,p.col,p.powered>0?4500:900); effects.push({type:'boom',x:p.cx(),y:p.cy(),t:0.55}); p.dead=true; sndExplode(); }
+        }
+        break;
+      case 'spikeweed':
+        if(p.t<=0){
+          for(const z of zombies) if(!z.dead&&z.row===p.row&&colAt(z.x)===p.col) damageZombie(z,p.powered>0?150:30);
+          p.t=p.powered>0?0.11:0.55;
+        }
+        break;
+    }
+  }
+  plants=plants.filter(p=>!p.dead);
+}
+function firePea(p,row,dx=0){
+  const kind=p.type==='snowpea'?'snow':'pea';
+  projectiles.push({kind,row,x:p.cx()+28+dx,y:cy(row,0)-50+50,vx:300,dmg:kind==='pea'?20:20,dead:false});
+  sndShoot();
+}
+function lobMelon(p,z){
+  const startX=p.cx()+20, tx=Math.max(BL+20, z.x+15);
+  projectiles.push({kind:'melon',row:p.row,x:startX,y:p.cy(),x0:startX,y0:p.cy(),tx,tx0:tx,dur:0.9,t:0,dead:false});
+  sndLob();
+}
+function splashMelon(m){
+  const col=colAt(m.tx), row=m.row;
+  for(const z of zombies) if(!z.dead&&Math.abs(z.row-row)<=1&&Math.abs(colAt(z.x)-col)<=1) damageZombie(z,60);
+  effects.push({type:'splash',x:m.tx,y:cy(m.row,0)-50+50,t:0.4});
+}
+function explodeAt(row,col,dmg){
+  for(const z of zombies) if(!z.dead&&Math.abs(z.row-row)<=1&&Math.abs(colAt(z.x)-col)<=1) damageZombie(z,dmg);
+}
+function updateProjectiles(dt){
+  for(const p of projectiles){
+    if(p.kind==='melon'){
+      p.t+=dt; const k=clamp(p.t/p.dur,0,1);
+      p.x=p.x0+(p.tx-p.x0)*k;
+      p.y=p.y0-95*Math.sin(Math.PI*k);
+      if(k>=1){ splashMelon(p); p.dead=true; }
+      continue;
+    }
+    p.x+=p.vx*dt;
+    if(p.kind==='pea'){
+      const c=colAt(p.x);
+      if(c>=0&&c<COLS&&plantAt(p.row,c)&&plantAt(p.row,c).type==='torchwood'){ p.kind='fire'; p.dmg=40; }
+    }
+    let hit=null;
+    for(const z of zombies){
+      if(z.dead||z.row!==p.row) continue;
+      if(p.x>=z.x-8&&p.x<=z.x+42){ if(!hit||z.x<hit.x) hit=z; }
+    }
+    if(hit){ damageZombie(hit,p.dmg); if(p.kind==='snow') hit.slow=6; p.dead=true; effects.push({type:'splat',x:p.x,y:p.y,t:0.18}); }
+    else if(p.x>W+30) p.dead=true;
+  }
+  projectiles=projectiles.filter(p=>!p.dead);
+}
+function updateZombies(dt){
+  for(const z of zombies){
+    if(z.dead) continue;
+    z.wob+=dt*4;
+    if(z.slow>0) z.slow-=dt;
+    const sp=z.speed*(z.slow>0?0.35:1);
+    // 找前方要啃的植物（地刺不挡路）
+    let target=null;
+    for(const p of plants){
+      if(p.dead||p.row!==z.row||p.type==='spikeweed') continue;
+      const pcx=p.cx();
+      if(pcx<=z.x+55&&pcx>=z.x-40){ if(!target||pcx>target.cx()) target=p; }
+    }
+    if(target){
+      z.biteT-=dt;
+      if(z.biteT<=0){
+        target.hp-=z.dmg; z.biteT=z.biteCd; sndChomp();
+        effects.push({type:'chomp',x:target.cx(),y:target.cy(),t:0.25});
+        if(target.hp<=0) target.dead=true;
+      }
+    } else {
+      z.x-=sp*dt;
+    }
+    // 小车触发 / 失败
+    if(z.x<BL-45){
+      const m=mowers[z.row];
+      if(m&&!m.active&&!m.gone){ m.active=true; sndMower(); }
+      if(z.x<BL-80&&(!m||m.gone)){ loseGame(); return; }
+    }
+  }
+  zombies=zombies.filter(z=>!z.dead);
+}
+function updateMowers(dt){
+  for(const m of mowers){
+    if(!m.active||m.gone) continue;
+    m.x+=260*dt;
+    if(m.x>W+50) m.gone=true;
+    for(const z of zombies){
+      if(z.dead||z.row!==m.row) continue;
+      if(z.x>=m.x-35&&z.x<=m.x+60){ killZombie(z); effects.push({type:'poof',x:z.x+22,y:cy(z.row,0)-50+50,t:0.3}); }
+    }
+  }
+}
+function updateEffects(dt){ effects=effects.filter(e=>{e.t-=dt; return e.t>0;}); }
+
+// ==================== 渲染 ====================
+function draw(){
+  // 天空
+  ctx.fillStyle='#aee3f5'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,.35)';
+  [[120,42],[480,26],[840,50]].forEach(c=>{ ctx.beginPath(); ctx.arc(c[0],c[1],26,0,7); ctx.fill(); });
+  // 草地棋盘
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    ctx.fillStyle=(r+c)%2===0?'#8fd06a':'#82c45f';
+    ctx.fillRect(BL+c*CELL,BT+r*CELL,CELL,CELL);
+  }
+  ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=2;
+  for(let c=0;c<=COLS;c++){ ctx.beginPath(); ctx.moveTo(BL+c*CELL,BT); ctx.lineTo(BL+c*CELL,BT+ROWS*CELL); ctx.stroke(); }
+  for(let r=0;r<=ROWS;r++){ ctx.beginPath(); ctx.moveTo(BL,BT+r*CELL); ctx.lineTo(BL+COLS*CELL,BT+r*CELL); ctx.stroke(); }
+  // 左侧房子
+  ctx.fillStyle='#8a5a3b'; ctx.fillRect(10,BT-10,BL-20,ROWS*CELL+20);
+  ctx.fillStyle='#c98f5f'; ctx.fillRect(10,BT-10,BL-20,34);
+  ctx.fillStyle='#f4e2c1';
+  for(let r=0;r<ROWS;r++) ctx.fillRect(16,BT+r*CELL+12,26,CELL-24);
+  ctx.fillStyle='#fff'; ctx.fillRect(30,BT+4*CELL+2,8,14); // 门
+  // 小车
+  for(const m of mowers) drawMower(m);
+  // 植物
+  for(const p of plants) drawPlant(p);
+  // 僵尸
+  for(const z of zombies) drawZombie(z);
+  // 子弹
+  for(const p of projectiles) drawProjectile(p);
+  // 阳光
+  for(const s of suns) drawSun(s);
+  // 能量豆 & 金克拉
+  for(const pf of plantFoodDrops) drawPlantFood(pf);
+  for(const gd of goldDrops) drawGold(gd);
+  if(dragItem) drawDragItem();
+  // 特效
+  for(const e of effects) drawEffect(e);
+  // 戴夫 NPC（站在房子前，最上层）
+  drawDave();
+  // 放置幽灵
+  drawGhost();
+  // 横幅
+  if(banner){
+    const a=clamp(banner.t/0.5,0,1);
+    ctx.globalAlpha=a;
+    ctx.font='bold 46px "Comic Sans MS","Microsoft YaHei"'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='#7b0d0d';
+    ctx.fillText('一大波僵尸来袭！', W/2, H/2-20);
+    ctx.strokeStyle='#fff'; ctx.lineWidth=6; ctx.strokeText('一大波僵尸来袭！', W/2, H/2-20);
+    ctx.globalAlpha=1;
+  }
+}
+function drawPlant(p){
+  const x=p.cx(), y=p.cy(), t=time;
+  const sway=Math.sin(t*2+p.row+p.col)*0.06;
+  ctx.save(); ctx.translate(x,y); ctx.rotate(sway);
+  if(p.powered>0){
+    ctx.strokeStyle='rgba(76,175,80,'+(0.4+Math.sin(t*10)*0.25)+')';
+    ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,44,0,7); ctx.stroke();
+  }
+  switch(p.type){
+    case 'sunflower': if(!drawPlantImage(p)) drawEmoji('🌻',44); break;
+    case 'peashooter':
+      if(drawPlantImage(p)){ break; }
+      drawShooter(0,0,'#3fae49'); break;
+    case 'snowpea': drawShooter(0,0,'#6ecbe0',true); break;
+    case 'repeater': drawShooter(0,0,'#3fae49',false,2); break;
+    case 'threepeater': drawShooter(0,0,'#3fae49',false,3); break;
+    case 'cherrybomb':
+      if(drawPlantImage(p)){
+        if(Math.floor(t*6)%2===0){ ctx.fillStyle='rgba(255,255,255,'+(0.45+0.3*Math.sin(t*12))+')'; ctx.beginPath(); ctx.arc(0,0,22,0,7); ctx.fill(); }
+        break;
+      }
+      drawEmoji('🍒',46); if(Math.floor(t*6)%2===0) drawEmoji('💥',26); break;
+    case 'potatomine':
+      drawEmoji('🥔',42);
+      if(p.armed){ ctx.fillStyle='rgba(255,60,60,'+(0.5+0.4*Math.sin(t*8))+')'; ctx.beginPath(); ctx.arc(0,0,30,0,7); ctx.fill(); }
+      break;
+    case 'wallnut': if(!drawPlantImage(p)) drawEmoji('🥜',46); break;
+    case 'spikeweed': if(!drawPlantImage(p)) drawSpikeweed(0,0,t); break;
+    case 'torchwood': drawEmoji('🔥',48); break;
+    case 'melonpult': if(!drawPlantImage(p)) drawEmoji('🍉',46); break;
+  }
+  ctx.restore();
+  // 血条
+  if(p.hp<p.maxHp){
+    const w=54, k=p.hp/p.maxHp;
+    ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(x-w/2,y-42,w,6);
+    ctx.fillStyle=k>0.5?'#7ed957':k>0.25?'#ffd83d':'#e85b4a'; ctx.fillRect(x-w/2,y-42,w*k,6);
+  }
+}
+function drawShooter(x,y,color,ice,barrels){
+  barrels=barrels||1;
+  ctx.fillStyle=color; ctx.strokeStyle='#256d2f'; ctx.lineWidth=3;
+  // 主体
+  ctx.beginPath(); ctx.arc(x,y,24,0,7); ctx.fill(); ctx.stroke();
+  // 眼睛
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x+6,y-8,8,0,7); ctx.fill();
+  ctx.fillStyle='#222'; ctx.beginPath(); ctx.arc(x+8,y-8,3.5,0,7); ctx.fill();
+  // 炮管
+  const offs=barrels===3?[-14,0,14]:barrels===2?[-7,7]:[0];
+  for(const off of offs){
+    const by=y+off;
+    ctx.fillStyle=color;
+    ctx.fillRect(x+12,by-5,22,10);
+    ctx.beginPath(); ctx.arc(x+34,by,7,0,7); ctx.fill(); ctx.stroke();
+  }
+  if(ice){ ctx.fillStyle='rgba(255,255,255,.8)'; ctx.fillRect(x+30, y-14, 8, 28); }
+}
+function drawSpikeweed(x,y,t){
+  ctx.fillStyle='#7d8f69';
+  for(let i=-1;i<=1;i++){
+    const h=14+Math.sin(t*6+i)*2;
+    ctx.beginPath(); ctx.moveTo(x+i*15-7,y+9); ctx.lineTo(x+i*15,y-h); ctx.lineTo(x+i*15+7,y+9); ctx.closePath(); ctx.fill();
+  }
+}
+function drawEmoji(emoji,size){
+  ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(emoji,0,2);
+}
+// ==================== 戴夫 NPC ====================
+let dave={say:'', t:0, next:7};
+const DAVE_TIPS=[
+  '☀️ 点击掉落的阳光就能收集能量！',
+  '🧟 僵尸逼近了，多种几棵豌豆射手！',
+  '🌻 多种向日葵，阳光会源源不断！',
+  '🥔 土豆雷提前埋好，等僵尸踩上去！',
+  '🚜 小车是最后防线，别让僵尸进屋！',
+  '🥜 坚果墙能帮你挡住僵尸的脚步！',
+  '🔥 火炬树桩能让豌豆伤害翻倍！',
+  '🍒 樱桃炸弹能炸飞一大片僵尸！',
+];
+function daveSay(s){ dave.say=s; dave.t=4.5; }
+function drawDave(){
+  const x=28, y=BT+ROWS*CELL-26;
+  // 咖啡杯（戴夫的手）
+  ctx.save(); ctx.translate(x+18,y-2);
+  ctx.fillStyle='#f7f3ea'; ctx.fillRect(-5,-8,13,15);
+  ctx.fillStyle='#c47f00'; ctx.fillRect(6,-8,4,15);
+  ctx.restore();
+  // 身体（蓝衬衫）
+  ctx.fillStyle='#4a7fb5';
+  ctx.beginPath(); ctx.ellipse(x,y+6,20,22,0,0,7); ctx.fill();
+  ctx.fillStyle='#3a6594';
+  ctx.fillRect(x-20,y-4,40,6);
+  // 头
+  ctx.fillStyle='#f5d2ae'; ctx.beginPath(); ctx.arc(x,y-28,17,0,7); ctx.fill();
+  // 蓝色卷发
+  ctx.fillStyle='#3a5f8a';
+  ctx.beginPath(); ctx.arc(x,y-41,13,Math.PI,0); ctx.fill();
+  for(let i=-2;i<=2;i++){ ctx.beginPath(); ctx.arc(x+i*7,y-44,6,0,7); ctx.fill(); }
+  // 络腮胡子
+  ctx.fillStyle='#6b4a2e';
+  ctx.beginPath(); ctx.ellipse(x,y-21,13,6,0,0,7); ctx.fill();
+  // 眼睛
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x-6,y-31,4.5,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(x+6,y-31,4.5,0,7); ctx.fill();
+  ctx.fillStyle='#222'; ctx.beginPath(); ctx.arc(x-6,y-31,2.2,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(x+6,y-31,2.2,0,7); ctx.fill();
+  // 语音气泡
+  if(dave.say&&dave.t>0){
+    ctx.font='bold 13px "Microsoft YaHei","PingFang SC",sans-serif';
+    const tw=ctx.measureText(dave.say).width;
+    const bw=tw+26, bh=34, bx=14, by=y-118;
+    ctx.fillStyle='rgba(255,255,255,.97)'; ctx.strokeStyle='#7b5b3a'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(bx+10,by);
+    ctx.lineTo(bx+bw-10,by);
+    ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+10);
+    ctx.lineTo(bx+bw,by+bh-10);
+    ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-10,by+bh);
+    ctx.lineTo(bx+34,by+bh);
+    ctx.lineTo(bx+26,by+bh+12);
+    ctx.lineTo(bx+14,by+bh);
+    ctx.lineTo(bx+10,by+bh);
+    ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-10);
+    ctx.lineTo(bx,by+10);
+    ctx.quadraticCurveTo(bx,by,bx+10,by);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#2c4a3b'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(dave.say, bx+13, by+bh/2);
+  }
+}
+function drawZombie(z){
+  const x=z.x, y=cy(z.row,0)-50+50;
+  const bob=Math.sin(z.wob)*4;
+  ctx.save(); ctx.translate(x+22,y+bob); ctx.rotate(Math.sin(z.wob)*0.06);
+  if(z.slow>0){ ctx.fillStyle='rgba(120,200,255,.35)'; ctx.beginPath(); ctx.arc(0,0,30,0,7); ctx.fill(); }
+  ctx.font='58px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🧟',0,4);
+  // 帽子等配件
+  if(z.type==='cone'){ ctx.fillStyle='#f0912f'; ctx.beginPath(); ctx.moveTo(-12,-24); ctx.lineTo(0,-44); ctx.lineTo(12,-24); ctx.closePath(); ctx.fill(); }
+  if(z.type==='bucket'){ ctx.fillStyle='#b9c2c9'; ctx.beginPath(); ctx.moveTo(-14,-26); ctx.lineTo(-11,-42); ctx.lineTo(11,-42); ctx.lineTo(14,-26); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#8b959c'; ctx.lineWidth=2; ctx.stroke(); }
+  if(z.type==='football'){
+    ctx.fillStyle='#3a4a6e'; ctx.beginPath(); ctx.ellipse(0,-32,15,10,0,0,7); ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(0,-40); ctx.lineTo(0,-24); ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-13,-32,5,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(13,-32,5,0,7); ctx.fill();
+  }
+  if(z.type==='runner'){ ctx.font='20px serif'; ctx.fillText('⚡',26,-8); }
+  ctx.restore();
+  // 血条
+  if(z.hp<z.maxHp){
+    const w=50, k=Math.max(0,z.hp/z.maxHp);
+    ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(x,y-52,w,7);
+    ctx.fillStyle=k>0.5?'#7ed957':k>0.25?'#ffd83d':'#e85b4a'; ctx.fillRect(x,y-52,w*k,7);
+  }
+}
+function drawProjectile(p){
+  if(p.kind==='melon'){
+    ctx.fillStyle='#3d9e4f'; ctx.beginPath(); ctx.arc(p.x,p.y,13,0,7); ctx.fill();
+    ctx.strokeStyle='#2c7439'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='#7dd18a'; ctx.beginPath(); ctx.arc(p.x-4,p.y-4,4,0,7); ctx.fill();
+  } else {
+    const c=p.kind==='fire'?'#ff7b2c':p.kind==='snow'?'#9fe0ff':'#4caf50';
+    ctx.fillStyle=c; ctx.beginPath(); ctx.arc(p.x,p.y, p.kind==='fire'?9:7,0,7); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(p.x-2,p.y-2,2.5,0,7); ctx.fill();
+  }
+}
+function drawSun(s){
+  const a=s.t<1?s.t:1;
+  ctx.globalAlpha=clamp(a,0,1);
+  const pulse=1+0.1*Math.sin(time*5+s.x);
+  ctx.save(); ctx.translate(s.x,s.y); ctx.scale(pulse,pulse);
+  ctx.fillStyle='rgba(255,216,61,.3)'; ctx.beginPath(); ctx.arc(0,0,22,0,7); ctx.fill();
+  ctx.font='30px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('☀️',0,0);
+  ctx.restore(); ctx.globalAlpha=1;
+}
+function drawPlantFood(pf){
+  const a=pf.t>4?0.45+0.55*Math.sin(pf.t*10):1;
+  ctx.globalAlpha=clamp(a,0,1);
+  ctx.save(); ctx.translate(pf.x,pf.y);
+  const glow=Math.sin(pf.t*3)*0.25+0.75;
+  ctx.fillStyle=`rgba(76,175,80,${glow})`;
+  ctx.shadowColor='#81c784'; ctx.shadowBlur=18;
+  ctx.beginPath(); ctx.arc(0,0,16,0,7); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#fff'; ctx.font='bold 16px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('P',0,1);
+  ctx.restore(); ctx.globalAlpha=1;
+}
+function drawGold(gd){
+  const a=gd.t>7?0.45+0.55*Math.sin(gd.t*10):1;
+  ctx.globalAlpha=clamp(a,0,1);
+  ctx.save(); ctx.translate(gd.x,gd.y);
+  const glow=Math.sin(gd.t*3)*0.25+0.75;
+  ctx.fillStyle=`rgba(255,193,7,${glow})`;
+  ctx.shadowColor='#ffd54f'; ctx.shadowBlur=18;
+  ctx.beginPath(); ctx.arc(0,0,16,0,7); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#7a4d00'; ctx.font='bold 16px sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('G',0,1);
+  ctx.restore(); ctx.globalAlpha=1;
+}
+function drawDragItem(){
+  if(!dragItem) return;
+  const cell=cellFromXY(mouse.x,mouse.y);
+  if(cell){
+    const p=plantAt(cell.row,cell.col);
+    if(dragItem.kind==='plantfood'&&p&&ATTACK_PLANTS.includes(p.type)){
+      ctx.fillStyle='rgba(76,175,80,.4)'; ctx.fillRect(BL+cell.col*CELL,BT+cell.row*CELL,CELL,CELL);
+    } else if(dragItem.kind==='gold'&&p){
+      ctx.fillStyle='rgba(255,193,7,.4)'; ctx.fillRect(BL+cell.col*CELL,BT+cell.row*CELL,CELL,CELL);
+    }
+  }
+  if(dragItem.kind==='plantfood') drawPlantFood(dragItem.item);
+  else if(dragItem.kind==='gold') drawGold(dragItem.item);
+  ctx.font='bold 15px "Microsoft YaHei","PingFang SC",sans-serif';
+  const tip=dragItem.kind==='plantfood'?'拖到攻击性植物身上释放 · 5倍攻击效果 10 秒':'拖到任意植物身上释放 · 瞬间满血';
+  const tw=ctx.measureText(tip).width, bw=tw+30;
+  ctx.fillStyle='rgba(30,60,40,.75)'; rr(W/2-bw/2,10,bw,30,15); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(tip, W/2, 25);
+}
+function drawMower(m){
+  if(m.gone) return;
+  const x=m.x, y=BT+m.row*CELL+50;
+  ctx.save(); ctx.translate(x,y);
+  ctx.fillStyle='#333'; ctx.beginPath(); ctx.arc(6,16,9,0,7); ctx.fill();
+  ctx.beginPath(); ctx.arc(38,16,9,0,7); ctx.fill();
+  ctx.fillStyle='#e03e3e';
+  ctx.fillRect(-6,-20,52,26);
+  ctx.fillStyle='#b32b2b'; ctx.fillRect(-6,-20,52,8);
+  ctx.strokeStyle='#333'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(4,-20); ctx.lineTo(-4,-34); ctx.moveTo(16,-20); ctx.lineTo(16,-34); ctx.stroke();
+  ctx.fillStyle='#ffd83d'; ctx.fillRect(30,-12,14,12);
+  ctx.restore();
+}
+function drawEffect(e){
+  const k=clamp(e.t,0,1);
+  if(e.type==='boom'){
+    const r=(1-k)*95+8;
+    ctx.fillStyle='rgba(255,150,40,'+k*0.85+')'; ctx.beginPath(); ctx.arc(e.x,e.y,r,0,7); ctx.fill();
+    ctx.fillStyle='rgba(255,240,180,'+k*0.8+')'; ctx.beginPath(); ctx.arc(e.x,e.y,r*0.55,0,7); ctx.fill();
+  } else if(e.type==='splat'){
+    ctx.fillStyle='rgba(90,180,80,'+k+')'; ctx.beginPath(); ctx.arc(e.x,e.y,8,0,7); ctx.fill();
+  } else if(e.type==='splash'){
+    ctx.fillStyle='rgba(80,190,90,'+k*0.8+')'; ctx.beginPath(); ctx.arc(e.x,e.y,22*k+8,0,7); ctx.fill();
+    ctx.fillStyle='rgba(255,100,100,'+k+')';
+    for(let i=0;i<4;i++){ const a=i*1.57; ctx.beginPath(); ctx.arc(e.x+Math.cos(a)*26*Math.sin(k*3.14), e.y+Math.sin(a)*26*Math.sin(k*3.14), 3,0,7); ctx.fill(); }
+  } else if(e.type==='poof'){
+    ctx.strokeStyle='rgba(255,255,255,'+k*0.7+')'; ctx.lineWidth=3;
+    for(let i=0;i<5;i++){ const a=i*1.26; ctx.beginPath(); ctx.moveTo(e.x,e.y); ctx.lineTo(e.x+Math.cos(a)*26*(1-k), e.y+Math.sin(a)*26*(1-k)); ctx.stroke(); }
+  } else if(e.type==='chomp'){
+    ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(255,255,255,'+k+')'; ctx.fillText('💢',e.x,e.y);
+  } else if(e.type==='powerup'){
+    ctx.save(); ctx.translate(e.x,e.y);
+    const r=(1-k)*55;
+    ctx.strokeStyle=`rgba(76,175,80,${k})`;
+    ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.stroke();
+    ctx.fillStyle=`rgba(129,199,132,${k*0.3})`;
+    ctx.beginPath(); ctx.arc(0,0,r*0.7,0,7); ctx.fill();
+    ctx.restore();
+  } else if(e.type==='heal'){
+    ctx.save(); ctx.translate(e.x,e.y);
+    ctx.strokeStyle=`rgba(255,215,64,${k})`;
+    ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,(1-k)*42+6,0,7); ctx.stroke();
+    ctx.fillStyle=`rgba(140,230,150,${k*0.35})`;
+    ctx.beginPath(); ctx.arc(0,0,(1-k)*30+4,0,7); ctx.fill();
+    ctx.restore();
+  }
+}
+function drawGhost(){
+  if(screen!=='play'||!selected) return;
+  if(selected.kind==='card'){
+    const P=PLANTS[selected.type];
+    const ok=(r,c)=>!plantAt(r,c)&&!zombies.some(z=>!z.dead&&z.row===r&&z.x<cx(r,c));
+    // 所有可种植的空格轻微高亮
+    ctx.globalAlpha=0.16;
+    ctx.fillStyle='#d9ffb3';
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(ok(r,c)) ctx.fillRect(BL+c*CELL,BT+r*CELL,CELL,CELL);
+    ctx.globalAlpha=1;
+    // 鼠标所在格子的幽灵预览
+    const cell=cellFromXY(mouse.x,mouse.y);
+    if(cell&&ok(cell.row,cell.col)){
+      ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(BL+cell.col*CELL,BT+cell.row*CELL,CELL,CELL);
+      ctx.globalAlpha=0.85;
+      ctx.font='42px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(P.emoji, cx(cell.row,cell.col), cy(cell.row,cell.col)+2);
+      ctx.globalAlpha=1;
+    }
+    // 顶部操作提示条
+    ctx.font='bold 15px "Microsoft YaHei","PingFang SC",sans-serif';
+    const tip='点击绿色草地格子种植 · 右键或 ESC 取消';
+    const tw=ctx.measureText(tip).width;
+    const bw=tw+30;
+    ctx.fillStyle='rgba(30,60,40,.75)';
+    rr(W/2-bw/2,10,bw,30,15); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(tip, W/2, 25);
+  }
+}
+
+// ==================== 音效 ====================
+let AC=null;
+function ac(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AC&&AC.state==='suspended')AC.resume(); return AC; }
+function tone(f,d,type,v,when){ const a=ac(); if(!a)return; const o=a.createOscillator(),g=a.createGain();
+  o.type=type||'square'; o.frequency.value=f; g.gain.value=v||0.07;
+  o.connect(g); g.connect(a.destination); const t=a.currentTime+(when||0);
+  o.start(t); g.gain.exponentialRampToValueAtTime(0.001,t+d); o.stop(t+d+0.02); }
+const sndShoot=()=>tone(880,0.08,'square',0.045);
+const sndLob=()=>tone(420,0.12,'sine',0.05);
+const sndPlant=()=>{tone(320,0.12,'triangle',0.08); tone(480,0.1,'triangle',0.06,0.05);};
+const sndSun=()=>{tone(1200,0.1,'sine',0.06); tone(1600,0.12,'sine',0.05,0.05);};
+const sndExplode=()=>{tone(90,0.5,'sawtooth',0.12); tone(60,0.6,'square',0.1,0.05);};
+const sndChomp=()=>tone(180,0.12,'sawtooth',0.05);
+const sndMower=()=>{tone(220,0.4,'sawtooth',0.09); tone(300,0.35,'sawtooth',0.07,0.1);};
+const sndShovel=()=>tone(500,0.1,'square',0.05);
+const sndWave=()=>tone(600,0.25,'sawtooth',0.07);
+const sndLose=()=>{tone(220,0.4,'sawtooth',0.1); tone(160,0.5,'sawtooth',0.1,0.3);};
+const sndWin=()=>{tone(523,0.15,'triangle',0.08); tone(659,0.15,'triangle',0.08,0.12); tone(784,0.25,'triangle',0.08,0.24);};
+
+// ==================== 界面 ====================
+const cardEls={};
+function buildCards(){
+  const wrap=document.getElementById('cards');
+  const keys=['1','2','3','4','5','6','7','8','9','0','-','='];
+  PLANT_ORDER.forEach((t,i)=>{
+    const P=PLANTS[t];
+    const btn=document.createElement('button');
+    btn.className='card'; btn.dataset.type=t;
+    btn.innerHTML='<div class="ckey">'+keys[i]+'</div><div class="cemoji">'+P.emoji+'</div><div class="cname">'+P.name+'</div><div class="ccost">☀'+P.cost+'</div><div class="cd" style="height:0%"></div>';
+    btn.onclick=()=>{
+      ac();
+      if(selected&&selected.kind==='card'&&selected.type===t){ selected=null; }
+      else selected={kind:'card',type:t};
+      updateHUD();
+    };
+    wrap.appendChild(btn); cardEls[t]=btn;
+  });
+  const sh=document.getElementById('shovel');
+  sh.onclick=()=>{ ac(); selected=selected&&selected.kind==='shovel'?null:{kind:'shovel'}; updateHUD(); };
+  document.getElementById('pauseBtn').onclick=()=>{ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'▶':'⏸'; };
+  document.getElementById('restartBtn').onclick=()=>{ if(screen==='play'||screen==='over') startLevel(level); };
+}
+function updateHUD(){
+  document.getElementById('sunCount').textContent=Math.floor(sun);
+  for(const t in cardEls){
+    const el=cardEls[t], P=PLANTS[t];
+    el.classList.toggle('off', sun<P.cost||pcd[t]>0);
+    const cd=el.querySelector('.cd');
+    cd.style.height=(pcd[t]>0? Math.min(100,pcd[t]/P.cd*100):0)+'%';
+    el.classList.toggle('sel', !!(selected&&selected.kind==='card'&&selected.type===t));
+  }
+  document.getElementById('shovel').classList.toggle('sel', !!(selected&&selected.kind==='shovel'));
+  document.getElementById('zombieLeft').textContent='🧟 '+Math.max(0,totalZombies-killed);
+  document.getElementById('progFill').style.width=(totalZombies? killed/totalZombies*100:0)+'%';
+}
+function buildMenu(){
+  const wrap=document.getElementById('levelBtns');
+  const descs=['初来乍到','路障登场','极速奔跑','铁桶来袭','橄榄球军团'];
+  LEVELS.forEach((L,i)=>{
+    const b=document.createElement('button');
+    b.className='lvlbtn';
+    b.innerHTML='第 '+(i+1)+' 关<small>'+(descs[i]||'')+' · '+(L.sun)+'☀开局</small>';
+    b.onclick=()=>{ ac(); startLevel(i); };
+    wrap.appendChild(b);
+  });
+}
+
+// ==================== 输入 ====================
+function getPos(e){
+  const rect=cv.getBoundingClientRect();
+  const t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;
+  return {x:(t.clientX-rect.left)*W/rect.width, y:(t.clientY-rect.top)*H/rect.height};
+}
+function onDown(e){
+  e.preventDefault();
+  if(screen!=='play'||paused) return;
+  const pos=getPos(e);
+  // 捡起能量豆 / 金克拉（拖拽使用）
+  for(let i=plantFoodDrops.length-1;i>=0;i--){
+    const pf=plantFoodDrops[i];
+    if(Math.hypot(pos.x-pf.x,pos.y-pf.y)<34){
+      plantFoodDrops.splice(i,1);
+      dragItem={kind:'plantfood',item:pf};
+      pf.x=pos.x; pf.y=pos.y;
+      return;
+    }
+  }
+  for(let i=goldDrops.length-1;i>=0;i--){
+    const gd=goldDrops[i];
+    if(Math.hypot(pos.x-gd.x,pos.y-gd.y)<34){
+      goldDrops.splice(i,1);
+      dragItem={kind:'gold',item:gd};
+      gd.x=pos.x; gd.y=pos.y;
+      return;
+    }
+  }
+  // 收阳光
+  for(const s of suns){
+    if(Math.hypot(pos.x-s.x,pos.y-s.y)<36){ s.t=0; sun+=s.val; sndSun(); updateHUD(); return; }
+  }
+  const cell=cellFromXY(pos.x,pos.y);
+  if(!cell) return;
+  if(selected&&selected.kind==='shovel'){
+    const p=plantAt(cell.row,cell.col);
+    if(p){ removePlant(p); sndShovel(); }
+    selected=null; updateHUD(); return;
+  }
+  if(selected&&selected.kind==='card'){
+    const type=selected.type, P=PLANTS[type];
+    if(plantAt(cell.row,cell.col)) return;
+    if(zombies.some(z=>!z.dead&&z.row===cell.row&&z.x<cx(cell.row,cell.col))) return;
+    if(sun<P.cost||pcd[type]>0) return;
+    sun-=P.cost;
+    addPlant(type,cell.row,cell.col);
+    pcd[type]=P.cd;
+    sndPlant(); updateHUD();
+  }
+}
+function onUp(e){
+  if(screen!=='play'||paused||!dragItem) return;
+  const pos=getPos(e);
+  const cell=cellFromXY(pos.x,pos.y);
+  const p=cell?plantAt(cell.row,cell.col):null;
+  if(dragItem.kind==='plantfood'){
+    if(p&&ATTACK_PLANTS.includes(p.type)){
+      p.powered=10;
+      effects.push({type:'powerup',x:p.cx(),y:p.cy(),t:1});
+      sndSun();
+    } else {
+      daveSay('能量豆只能用于攻击性植物！');
+      const it=dragItem.item; it.x=clamp(pos.x,BL+30,BL+COLS*CELL-30); it.y=clamp(pos.y,BT+30,BT+ROWS*CELL-30);
+      plantFoodDrops.push(it);
+    }
+  } else if(dragItem.kind==='gold'){
+    if(p){
+      p.hp=p.maxHp;
+      effects.push({type:'heal',x:p.cx(),y:p.cy(),t:0.8});
+      sndSun();
+    } else {
+      const it=dragItem.item; it.x=clamp(pos.x,BL+30,BL+COLS*CELL-30); it.y=clamp(pos.y,BT+30,BT+ROWS*CELL-30);
+      goldDrops.push(it);
+    }
+  }
+  dragItem=null;
+}
+function cancelDrag(){
+  if(dragItem){
+    if(dragItem.kind==='plantfood') plantFoodDrops.push(dragItem.item);
+    else goldDrops.push(dragItem.item);
+    dragItem=null;
+  }
+}
+cv.addEventListener('mousedown',onDown);
+cv.addEventListener('touchstart',onDown,{passive:false});
+cv.addEventListener('mousemove',e=>{
+  const r=cv.getBoundingClientRect();
+  mouse={x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height};
+  if(dragItem){ dragItem.item.x=mouse.x; dragItem.item.y=mouse.y; }
+});
+cv.addEventListener('touchmove',e=>{
+  if(e.touches.length){ e.preventDefault(); const r=cv.getBoundingClientRect(); const t=e.touches[0];
+    mouse={x:(t.clientX-r.left)*W/r.width, y:(t.clientY-r.top)*H/r.height};
+    if(dragItem){ dragItem.item.x=mouse.x; dragItem.item.y=mouse.y; } }
+},{passive:false});
+cv.addEventListener('mouseup',onUp);
+cv.addEventListener('touchend',onUp);
+cv.addEventListener('contextmenu',e=>{ e.preventDefault(); cancelDrag(); selected=null; updateHUD(); });
+document.addEventListener('keydown',e=>{
+  const keys=['1','2','3','4','5','6','7','8','9','0','-','='];
+  const i=keys.indexOf(e.key);
+  if(i>=0&&i<PLANT_ORDER.length&&screen==='play'){ ac(); selected={kind:'card',type:PLANT_ORDER[i]}; updateHUD(); }
+  if(e.key==='Escape'){ cancelDrag(); selected=null; updateHUD(); }
+  if(e.key==='p'||e.key==='P'){ if(screen==='play'){ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'▶':'⏸'; } }
+});
+
+// ==================== 主循环 ====================
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  if(screen==='play') update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+buildMenu();
+buildCards();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
