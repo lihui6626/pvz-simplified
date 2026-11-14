@@ -17,6 +17,14 @@
     color:#2c4a3b; user-select:none;
   }
   #app{width:100%; max-width:1040px;}
+  .branchTag{display:inline-block; color:#8a6d3b; font-size:13px; background:rgba(255,244,214,.9);
+    border:1px dashed #d9b96a; border-radius:10px; padding:3px 12px; margin:4px auto;}
+  #fusionBtn{cursor:pointer; transition:all .15s;}
+  #fusionBtn:hover{background:#ffe9b0; border-style:solid; transform:translateY(-1px);}
+  .fusion-tbl{border-collapse:collapse; margin:6px auto 4px; font-size:14px; color:#44544a;}
+  .fusion-tbl td{padding:3px 8px; border-bottom:1px dashed #dfe8df;}
+  .fusion-tbl tr:last-child td{border-bottom:none;}
+  .fusion-tbl td.op{color:#c9a24b; font-weight:bold; padding:0 2px;}
 
   /* ============ 菜单 ============ */
   .screen{background:rgba(255,255,255,.92); border-radius:26px; box-shadow:0 14px 40px rgba(30,70,50,.25);
@@ -60,6 +68,15 @@
   .btn-round{border:none; border-radius:10px; width:44px; cursor:pointer; font-size:18px;
     background:linear-gradient(180deg,#fff,#e8ece6); border:2px solid #b8c4b2; box-shadow:0 3px 6px rgba(0,0,0,.2);}
   .btn-round:hover{transform:translateY(-2px);}
+  /* 僵尸卡槽：点选后点击草地可放僵尸 */
+  #zcards{display:flex; align-items:center; gap:4px;}
+  .zcard{border:none; border-radius:9px; width:42px; cursor:pointer; font-family:inherit; padding:3px 0;
+    background:linear-gradient(180deg,#4a5163,#2b313d); color:#d7dee8; box-shadow:0 3px 6px rgba(0,0,0,.3);
+    border-top:3px solid #6f7d95; transition:transform .1s;}
+  .zcard:hover{transform:translateY(-2px);}
+  .zcard.sel{outline:3px solid #ff8f5e; transform:translateY(-4px);}
+  .zcard .zemoji{font-size:18px; line-height:1.2;}
+  .zcard .zname{font-size:9px; font-weight:bold;}
 
   #cvWrap{position:relative; background:#000; line-height:0;}
   canvas{width:100%; display:block; border-radius:0 0 18px 18px;}
@@ -89,6 +106,7 @@
   <div id="menu" class="screen">
     <h1>🌻 植物大战僵尸 🧟</h1>
     <p class="sub">简化版 · 消灭所有僵尸，保卫你的脑子！</p>
+    <div class="branchTag">🌿 测试合成分支：<b>test-fusion 分支</b></div>
     <div id="levelBtns"></div>
     <div class="tip">
       🧑‍🌾 戴夫会站在房子前给你提示。<br>
@@ -103,9 +121,12 @@
   <div id="game" class="screen hidden">
     <div class="box">
       <div id="hud">
+        <div id="fusionBtn" class="branchTag" title="点击查看全部合成配方">🌿 合成分支 · 📖 配方表</div>
         <div id="sunbox">☀️ <span id="sunCount">0</span></div>
         <div id="cards"></div>
         <button id="shovel" class="tool" title="铲子：移走植物">🪏<span class="sname">铲子</span></button>
+        <button id="glove" class="tool" title="手套：把植物搬到别处（搬到相同植物上可合成）">🧤<span class="sname">手套</span></button>
+        <div id="zcards" title="僵尸卡槽：点选一种僵尸，再点击草地即可放出一只来冲击你的防线"></div>
         <button id="restartBtn" class="btn-round" title="重新开始本关">🔄</button>
         <button id="pauseBtn" class="btn-round" title="暂停 (P)">⏸</button>
       </div>
@@ -148,23 +169,73 @@ const PLANTS={
   sunflower:  {name:'向日葵',  cost:50,  cd:5,   hp:150, emoji:'🌻', desc:'定期产出阳光'},
   peashooter: {name:'豌豆射手',cost:100, cd:5,   hp:150, emoji:'🫛', desc:'发射豌豆攻击'},
   snowpea:    {name:'寒冰射手',cost:175, cd:7.5, hp:150, emoji:'🧊', desc:'豌豆附带减速'},
-  repeater:   {name:'双发射手',cost:200, cd:7.5, hp:150, emoji:'🔫', desc:'双倍火力'},
+  repeater:   {name:'机枪豌豆',cost:200, cd:7.5, hp:150, emoji:'🔫', desc:'十连发 · 每30秒大招千发'},
   threepeater:{name:'三线射手',cost:300, cd:10,  hp:150, emoji:'🎯', desc:'同时打三行'},
   cherrybomb: {name:'樱桃炸弹',cost:150, cd:20,  hp:150, emoji:'🍒', desc:'3x3 大爆炸'},
   potatomine: {name:'土豆雷',  cost:25,  cd:15,  hp:150, emoji:'🥔', desc:'埋雷，僵尸踩上引爆'},
-  wallnut:    {name:'坚果墙',  cost:50,  cd:20,  hp:900, emoji:'🥜', desc:'超高血量挡路'},
+  magictater: {name:'魔术洋芋',cost:25,  cd:15,  hp:300, emoji:'🥔', desc:'埋地后魅惑踩到它的僵尸'},
+  wallnut:    {name:'坚果墙',  cost:50,  cd:20,  hp:9000, emoji:'🥜', desc:'超高血量挡路'},
   spikeweed:  {name:'地刺',    cost:100, cd:6,   hp:150, emoji:'🦔', desc:'扎伤踩过去的僵尸'},
-  torchwood:  {name:'火炬树桩',cost:175, cd:7.5, hp:150, emoji:'🔥', desc:'豌豆穿过变火豌豆'},
+  cactus:     {name:'仙人掌',  cost:125, cd:7.5, hp:150, emoji:'🌵', desc:'尖刺无限穿透 · 每3秒发射一枚'},
+  torchwood:  {name:'火炬树桩',cost:175, cd:7.5, hp:150, emoji:'🔥', desc:'豌豆每穿过一个伤害×2'},
+  obsidian:   {name:'黑曜石火炬树桩',cost:500, cd:7.5, hp:150, emoji:'🪨', desc:'豌豆变黑曜石 · 伤害100万倍'},
   melonpult:  {name:'西瓜投手',cost:300, cd:10,  hp:150, emoji:'🍉', desc:'抛物线范围攻击'},
+  hypnotoad:  {name:'魅惑菇', cost:75,  cd:10,  hp:150, emoji:'🍄', desc:'魅惑一只僵尸为你战斗'},
+  tallnut:    {name:'高坚果', cost:125, cd:10,  hp:12000, emoji:'🥜', desc:'比坚果墙更高更硬'},
+  jalapeno:   {name:'火爆辣椒', cost:125, cd:15, hp:100, emoji:'🌶️', desc:'烧毁一整行僵尸'},
+  iceshroom:  {name:'寒冰菇', cost:75, cd:15,  hp:100, emoji:'🧊', desc:'冰冻全场僵尸'},
+  doomshroom: {name:'毁灭菇', cost:125, cd:25, hp:100, emoji:'☠️', desc:'全屏大爆炸·留下弹坑'},
+  // —— 合成植物（在已有植物上叠加种植获得，不出现在卡槽）——
+  cherrypea:        {name:'樱桃豌豆',      cost:0, cd:0, hp:220, emoji:'🍒', desc:'豌豆伤害×2'},
+  supercherry:      {name:'超级樱桃豌豆',  cost:0, cd:0, hp:220, emoji:'🍒', desc:'发射樱桃炸弹弹'},
+  doublepea:        {name:'双发豌豆',      cost:0, cd:0, hp:150, emoji:'🫛', desc:'一次两发'},
+  triplepea:        {name:'三发豌豆',      cost:0, cd:0, hp:150, emoji:'🫛', desc:'一次三发'},
+  doublecherry:     {name:'双发樱桃',      cost:0, cd:0, hp:220, emoji:'🍒', desc:'一次两发樱桃弹'},
+  doublesupercherry:{name:'双发超级樱桃',  cost:0, cd:0, hp:220, emoji:'🍒', desc:'一次两发大爆炸弹'},
+  charmpea:         {name:'魅惑菇豌豆',    cost:0, cd:0, hp:150, emoji:'🍄', desc:'发射魅惑弹'},
+  charmdouble:      {name:'魅惑双发',      cost:0, cd:0, hp:150, emoji:'🍄', desc:'一次两发魅惑弹'},
+  cherrymachinegun: {name:'樱桃机枪',      cost:0, cd:0, hp:220, emoji:'🍒', desc:'连发樱桃弹·大招千发'},
+  fortnut:          {name:'堡垒坚果',      cost:0, cd:0, hp:50000, emoji:'🏰', desc:'超强防御·免疫子弹'},
+  obsidiancore:     {name:'黑曜石核心',    cost:0, cd:0, hp:2000, emoji:'⚫', desc:'黑曜石合成中间体'},
+  obsidianjalapeno: {name:'黑曜石辣椒',    cost:0, cd:0, hp:300, emoji:'🌶️', desc:'发射黑曜石炮弹'},
+  ultcannon:        {name:'究极炮台',      cost:0, cd:0, hp:400, emoji:'⚡', desc:'连发黑曜石炮弹·大招千发'},
+  peacannon:        {name:'豌豆炮台',      cost:0, cd:0, hp:400, emoji:'🎯', desc:'三行连发豌豆·大招千发'},
+  doommachinegun:   {name:'毁灭机枪',      cost:0, cd:0, hp:220, emoji:'☠️', desc:'连发毁灭弹·大招千发'},
+  firemachinegun:   {name:'火焰机枪',      cost:0, cd:0, hp:220, emoji:'🔥', desc:'连发火焰弹·大招千发'},
+  icemachinegun:    {name:'寒冰机枪',      cost:0, cd:0, hp:220, emoji:'🧊', desc:'连发寒冰弹·大招千发'},
+  charmmachinegun:  {name:'魅惑机枪',      cost:0, cd:0, hp:220, emoji:'🍄', desc:'连发魅惑弹·大招千发'},
 };
-const PLANT_ORDER=['sunflower','peashooter','snowpea','repeater','threepeater','cherrybomb','potatomine','wallnut','spikeweed','torchwood','melonpult'];
+const PLANT_ORDER=['sunflower','peashooter','snowpea','repeater','threepeater','cherrybomb','potatomine','magictater','wallnut','tallnut','spikeweed','cactus','torchwood','melonpult','obsidian','hypnotoad','jalapeno','iceshroom','doomshroom'];
+// 卡槽中隐藏的植物（因卡槽太多会遮挡画面，暂时不上架）：
+const HIDDEN_CARDS=new Set(['hypnotoad','jalapeno','iceshroom']);
+const SLOT_PLANTS=PLANT_ORDER.filter(t=>!HIDDEN_CARDS.has(t));
+
+// 叠加合成配方：[已有植物] + [放置的植物] → 合成植物
+const FUSION={
+  peashooter: {peashooter:'doublepea', cherrybomb:'cherrypea'},
+  doublepea:  {peashooter:'triplepea', cherrybomb:'doublecherry', hypnotoad:'charmdouble'},
+  triplepea:  {peashooter:'repeater'},
+  cherrypea:  {cherrybomb:'supercherry'},
+  doublecherry:{cherrybomb:'doublesupercherry'},
+  repeater:   {cherrybomb:'cherrymachinegun', doomshroom:'doommachinegun', jalapeno:'firemachinegun', iceshroom:'icemachinegun', hypnotoad:'charmmachinegun'},
+  supercherry:{repeater:'cherrymachinegun'},
+  hypnotoad:  {peashooter:'charmpea'},
+  // 三线射手系列：三线射手 + 机枪豌豆 = 豌豆炮台
+  threepeater:{repeater:'peacannon'},
+  // 堡垒坚果与黑曜石系列
+  fortnut:    {jalapeno:'obsidiancore'},
+  obsidiancore:{iceshroom:'obsidian'},
+  obsidian:   {jalapeno:'obsidianjalapeno'},
+  obsidianjalapeno:{peacannon:'ultcannon'},
+};
 
 const ZOMBIES={
-  normal:   {name:'普通僵尸',   hp:200, speed:13, dmg:30, biteCd:0.8},
-  cone:     {name:'路障僵尸',   hp:430, speed:13, dmg:30, biteCd:0.8},
-  bucket:   {name:'铁桶僵尸',   hp:780, speed:13, dmg:30, biteCd:0.8},
-  runner:   {name:'快速僵尸',   hp:180, speed:45, dmg:30, biteCd:0.8},
-  football: {name:'橄榄球僵尸', hp:950, speed:27, dmg:45, biteCd:0.7},
+  normal:   {name:'普通僵尸',   hp:100, speed:1, dmg:30, biteCd:0.8},
+  cone:     {name:'路障僵尸',   hp:100, speed:1, dmg:30, biteCd:0.8},
+  bucket:   {name:'铁桶僵尸',   hp:100, speed:1, dmg:30, biteCd:0.8},
+  runner:   {name:'快速僵尸',   hp:100, speed:1, dmg:30, biteCd:0.8},
+  football: {name:'橄榄球僵尸', hp:100, speed:1, dmg:45, biteCd:0.7},
+  giant:    {name:'巨人僵尸',   hp:900, speed:0.55, dmg:90, biteCd:1.2},
 };
 
 const PLANT_IMAGES={};
@@ -208,6 +279,44 @@ const LEVELS=[
     {at:85, groups:[{type:'football',n:3,every:3},{type:'bucket',n:3,every:4},{type:'cone',n:3,every:3}]},
     {at:130,groups:[{type:'football',n:4,every:2.5},{type:'runner',n:3,every:2}]},
   ]},
+  {sun:225, waves:[
+    {at:10, groups:[{type:'runner',n:6,every:2.5}]},
+    {at:40, groups:[{type:'cone',n:5,every:3},{type:'bucket',n:2,every:6}]},
+    {at:75, groups:[{type:'bucket',n:4,every:3},{type:'football',n:2,every:5}]},
+    {at:110,groups:[{type:'cone',n:6,every:2.5},{type:'bucket',n:4,every:3}]},
+    {at:145,groups:[{type:'football',n:3,every:3.5},{type:'bucket',n:4,every:2.5}]},
+  ]},
+  {sun:250, waves:[
+    {at:8, groups:[{type:'runner',n:7,every:2}]},
+    {at:35, groups:[{type:'runner',n:4,every:2},{type:'cone',n:5,every:3}]},
+    {at:68, groups:[{type:'bucket',n:5,every:2.5},{type:'football',n:2,every:5}]},
+    {at:100,groups:[{type:'football',n:3,every:3},{type:'runner',n:6,every:2}]},
+    {at:135,groups:[{type:'bucket',n:6,every:2},{type:'football',n:2,every:3},{type:'runner',n:4,every:2.5}]},
+  ]},
+  {sun:275, waves:[
+    {at:8, groups:[{type:'cone',n:6,every:2.5}]},
+    {at:35, groups:[{type:'cone',n:5,every:2},{type:'bucket',n:3,every:4}]},
+    {at:68, groups:[{type:'bucket',n:6,every:2.5},{type:'runner',n:4,every:2.5}]},
+    {at:102,groups:[{type:'football',n:3,every:3},{type:'bucket',n:4,every:3}]},
+    {at:138,groups:[{type:'football',n:4,every:2.5},{type:'cone',n:6,every:2}]},
+  ]},
+  {sun:300, waves:[
+    {at:6, groups:[{type:'runner',n:6,every:1.8}]},
+    {at:30, groups:[{type:'cone',n:6,every:2},{type:'runner',n:4,every:2}]},
+    {at:58, groups:[{type:'bucket',n:5,every:2},{type:'football',n:2,every:4}]},
+    {at:85, groups:[{type:'bucket',n:5,every:2.5},{type:'cone',n:5,every:2},{type:'runner',n:4,every:2}]},
+    {at:118,groups:[{type:'football',n:4,every:2.5},{type:'bucket',n:4,every:2.5}]},
+    {at:150,groups:[{type:'bucket',n:5,every:2},{type:'runner',n:6,every:1.8}]},
+  ]},
+  {sun:325, waves:[
+    {at:5, groups:[{type:'normal',n:6,every:2},{type:'runner',n:4,every:2}]},
+    {at:28, groups:[{type:'cone',n:6,every:2},{type:'bucket',n:3,every:3.5}]},
+    {at:55, groups:[{type:'bucket',n:6,every:2},{type:'football',n:3,every:3}]},
+    {at:80, groups:[{type:'football',n:4,every:2.5},{type:'runner',n:6,every:1.8}]},
+    {at:105,groups:[{type:'bucket',n:6,every:2},{type:'cone',n:5,every:2},{type:'football',n:3,every:3}]},
+    {at:135,groups:[{type:'football',n:5,every:2},{type:'bucket',n:5,every:2.5},{type:'runner',n:4,every:1.8}]},
+  ]},
+  {sun:300, endless:true, waves:[]},  // 无尽模式：波次由 buildEndlessWaves 动态生成
 ];
 
 // ==================== 全局状态 ====================
@@ -218,9 +327,12 @@ let plants=[], zombies=[], projectiles=[], suns=[], mowers=[], effects=[];
 let spawnQueue=[], bannerTimes=[], banner=null;
 let selected=null;          // {kind:'card',type} | {kind:'shovel'} | null
 let totalZombies=0, killed=0;
+let endlessRound=0;         // 无尽模式当前波次（0=非无尽关卡）
 let sunFallTimer=0;
 let plantFoodDrops=[], plantFoodTimer=30, goldDrops=[], goldTimer=45, dragItem=null;
-const ATTACK_PLANTS=['peashooter','snowpea','repeater','threepeater','melonpult','potatomine','cherrybomb','spikeweed'];
+let craters=[]; // 毁灭菇留下的弹坑 {row,col,until}
+let gloveDrag=null; // 手套正在搬运的植物 {type,fromRow,fromCol}
+const ATTACK_PLANTS=['peashooter','snowpea','repeater','threepeater','melonpult','potatomine','magictater','cherrybomb','spikeweed','cactus','cherrypea','supercherry','doublepea','triplepea','doublecherry','doublesupercherry','charmpea','charmdouble','cherrymachinegun','doommachinegun','firemachinegun','icemachinegun','charmmachinegun','obsidianjalapeno','ultcannon','peacannon','jalapeno','iceshroom','doomshroom'];
 const pcd={};               // 冷却时间
 let mouse={x:-99,y:-99};
 
@@ -240,7 +352,34 @@ function buildWaves(L){
     for(let i=0;i<g.n;i++) list.push({t:w.at+i*g.every, type:g.type});
   });});
   list.sort((a,b)=>a.t-b.t);
+  if(list.length){
+    const lw=L.waves[L.waves.length-1];
+    const lg=lw.groups[lw.groups.length-1];
+    list.push({t:list[list.length-1].t+3, type:lg.type, boss:true}); // 每关最后的 Boss，类型与最后一波最强僵尸一致
+  }
   return list;
+}
+// 无尽模式：按波次动态生成僵尸（round 从 1 开始，start 为本波起始时间）
+function buildEndlessWaves(round, start){
+  const n=Math.max(0,round);           // 波次越高，数量越多、间隔越短
+  const at1=start+8, at2=start+30, at3=start+55;
+  const w=[
+    {at:at1, groups:[{type:'normal', n:3+round,        every:Math.max(1.2, 3-round*0.15)}]},
+    {at:at2, groups:[{type:'cone',   n:2+Math.ceil(round*0.8), every:Math.max(1.4, 3-round*0.1)},
+                     {type:'bucket', n:round>=2?1+Math.floor(round/2):0, every:Math.max(2, 4-round*0.1)}]},
+    {at:at3, groups:[{type:'football', n:1+Math.floor(round/2), every:Math.max(1.8, 3.5-round*0.1)}]},
+  ];
+  // 巨人僵尸：第 3 波开始出现在收尾波，第 6 波开始中期也出现
+  if(round>=3) w[2].groups.push({type:'giant', n:1+Math.floor(round/3), every:9});
+  if(round>=6) w[1].groups.push({type:'giant', n:1, every:10});
+  const list=[];
+  w.forEach(x=>x.groups.forEach(g=>{
+    for(let i=0;i<g.n;i++) list.push({t:x.at+i*g.every, type:g.type});
+  }));
+  list.sort((a,b)=>a.t-b.t);
+  // 每波压轴：一只巨人（第 5 波起为 3 倍血 BOSS 巨人）
+  list.push({t:list[list.length-1].t+3, type:'giant', boss:round>=5});
+  return {list, ats:[at1,at2,at3]};
 }
 
 // ==================== 关卡流程 ====================
@@ -248,23 +387,31 @@ function startLevel(i){
   level=i; const L=LEVELS[i];
   screen='play'; paused=false;
   sun=L.sun; time=0;
-  plants=[]; zombies=[]; projectiles=[]; suns=[]; effects=[]; plantFoodDrops=[]; goldDrops=[];
-  plantFoodTimer=30; goldTimer=45; spawnQueue=buildWaves(L);
-  bannerTimes=L.waves.map(w=>w.at).sort((a,b)=>a-b);
-  banner=null; selected=null;
+  plants=[]; zombies=[]; projectiles=[]; suns=[]; effects=[]; plantFoodDrops=[]; goldDrops=[]; craters=[];
+  plantFoodTimer=30; goldTimer=45;
+  if(L.endless){
+    endlessRound=1;
+    const r=buildEndlessWaves(1,0);
+    spawnQueue=r.list; bannerTimes=r.ats;
+  }else{
+    endlessRound=0;
+    spawnQueue=buildWaves(L);
+    bannerTimes=L.waves.map(w=>w.at).sort((a,b)=>a-b);
+  }
+  banner=null; selected=null; gloveDrag=null;
   totalZombies=spawnQueue.length; killed=0; sunFallTimer=3;
   mowers=[]; for(let r=0;r<ROWS;r++) mowers.push({row:r, x:BL-52, active:false, gone:false});
   for(const t in PLANTS) pcd[t]=0;
   showScreen('play');
-  document.getElementById('progText').textContent='第 '+(level+1)+' 关';
+  document.getElementById('progText').textContent=L.endless? '♾️ 无尽 · 第 1 波' : '第 '+(level+1)+' 关';
   updateHUD();
   // 戴夫开场提示 + 新手教程（仅首次）
   daveSay('🧑‍🌾 点击卡片选植物，再点草地格子种下！');
-  if(!localStorage.getItem('pvz_tut_v1')){
+  if(!localStorage.getItem('pvz_tut_v2')){
     paused=true;
     showOverlay('🧑‍🌾 戴夫的种植教程',
-      '① 点击下方卡片选择植物（先试 🌻 向日葵）<br>② 把鼠标移到棋盘<br>③ 点击绿色草地格子即可种下！<br>④ 点击掉落的 ☀️ 收集能量<br><br><small>右键或按 ESC 可取消选择</small>',
-      '开始种植！',()=>{ paused=false; document.getElementById('overlay').classList.add('hidden'); localStorage.setItem('pvz_tut_v1','1'); });
+      '① 点击下方卡片选择植物（先试 🌻 向日葵）<br>② 把鼠标移到棋盘<br>③ 点击绿色草地格子即可种下！<br>④ 点击掉落的 ☀️ 收集能量<br><br>💡 <b>特殊玩法·叠加合成</b>：<br>在<b>已有植物的格子</b>上再放另一种植物，可合成升级！<br>例如：豌豆+樱桃=樱桃豌豆，豌豆+豌豆=双发豌豆<br>可合成的格子会<b>黄色高亮</b> ✨<br><br><small>右键或按 ESC 可取消选择</small>',
+      '开始种植！',()=>{ paused=false; document.getElementById('overlay').classList.add('hidden'); localStorage.setItem('pvz_tut_v2','1'); });
   }
 }
 function showScreen(s){
@@ -280,11 +427,41 @@ function showOverlay(title, desc, btnText, fn){
   ov.classList.remove('hidden');
   ov.querySelector('#ovBtn').onclick=fn;
 }
+// 合成配方大全：从 FUSION 自动生成表格
+function fusionGuideHtml(){
+  let html='<table class="fusion-tbl">';
+  for(const base in FUSION){
+    for(const placed in FUSION[base]){
+      const res=FUSION[base][placed];
+      const A=PLANTS[base],B=PLANTS[placed],C=PLANTS[res];
+      if(!A||!B||!C) continue;
+      html+='<tr><td>'+A.emoji+' '+A.name+'</td><td class="op">+</td><td>'+B.emoji+' '+B.name+'</td><td class="op">=</td><td>'+C.emoji+' '+C.name+'</td></tr>';
+    }
+  }
+  html+='<tr><td>🧱 高坚果</td><td class="op">+</td><td>🥔 魔术洋芋/💣 土豆雷</td><td class="op">=</td><td>🏰 堡垒坚果</td></tr>';
+  html+='<tr><td colspan="5" style="padding-top:8px;color:#a0896a;font-size:12px;">💡 先选中一张卡，再放到<b>已有植物的格子</b>上即可合成</td></tr>';
+  html+='</table>';
+  return html;
+}
+function showFusionGuide(){
+  showOverlay('🌿 合成分支 · 配方表','在已有植物的格子上再种一种植物即可合成：'+fusionGuideHtml(),'知道了',()=>{ document.getElementById('overlay').classList.add('hidden'); });
+}
+document.getElementById('fusionBtn').onclick=showFusionGuide;
 function winLevel(){
   screen='over';
-  if(level>=LEVELS.length-1) showOverlay('🎉 全部通关！','你打败了所有僵尸，脑子保住了！','回到主菜单',()=>showScreen('menu'));
+  if(level>=LEVELS.length-2) showOverlay('🎉 全部通关！','常规关卡全部通过！还想打？试试无尽模式','♾️ 挑战无尽模式',()=>startLevel(LEVELS.length-1));
   else showOverlay('🎉 胜利！','第 '+(level+2)+' 关已解锁','下一关',()=>startLevel(level+1));
   sndWin();
+}
+// 无尽模式：本波清空后进入下一波
+function nextEndlessRound(){
+  endlessRound++;
+  sun+=80+endlessRound*10;  // 每波奖励阳光，越往后越多
+  const r=buildEndlessWaves(endlessRound, time+6);
+  spawnQueue=r.list; bannerTimes=r.ats;
+  totalZombies=killed+r.list.length;
+  document.getElementById('progText').textContent='♾️ 无尽 · 第 '+endlessRound+' 波';
+  daveSay('♾️ 第 '+endlessRound+' 波来袭！'+(endlessRound>=3?'小心 🪓 巨人僵尸！':''));
 }
 function loseGame(){
   if(screen!=='play') return;
@@ -301,11 +478,22 @@ function bestRow(){
   if(!rows.length) rows=[0,1,2,3,4];
   return rows[Math.floor(Math.random()*rows.length)];
 }
-function spawnZombie(type){
+function spawnZombie(type, boss){
   const Z=ZOMBIES[type];
   const row=bestRow();
-  zombies.push({type,row, x:W+30, hp:Z.hp, maxHp:Z.hp, speed:Z.speed, dmg:Z.dmg,
-    biteCd:Z.biteCd, biteT:0, slow:0, wob:rnd(0,6.28), dead:false});
+  const hpMul=boss?3:1; // 僵尸血量已降低：普通僵尸原版血量，BOSS 3 倍
+  zombies.push({type,row, x:W+30, hp:Z.hp*hpMul, maxHp:Z.hp*hpMul, speed:Z.speed, dmg:Z.dmg,
+    biteCd:Z.biteCd, biteT:0, slow:0, wob:rnd(0,6.28), dead:false, boss:!!boss});
+  if(boss) daveSay('👑 '+Z.name+' BOSS 出现！血量 3 倍！');
+}
+function placePlayerZombie(type,row,col){
+  // 玩家从僵尸卡槽放出的僵尸（带 player 标记，不走失败/胜利判定）
+  const Z=ZOMBIES[type];
+  const x=cx(row,col)+30;
+  zombies.push({type,row,x,hp:Z.hp,maxHp:Z.hp,speed:Z.speed,dmg:Z.dmg,
+    biteCd:Z.biteCd,biteT:0,slow:0,wob:rnd(0,6.28),dead:false,player:true});
+  effects.push({type:'poof',x,y:cy(row,0)-50+50,t:0.3});
+  daveSay('放出了 1 只 '+Z.name+'！');
 }
 function addPlant(type,row,col){
   const P=PLANTS[type];
@@ -313,25 +501,34 @@ function addPlant(type,row,col){
     cx(){ return cx(this.row,this.col); },
     cy(){ return cy(this.row,this.col); }};
   if(type==='potatomine') p.armT=14;
+  if(type==='magictater') p.armT=14;
   if(type==='sunflower') p.t=rnd(3,6);
+  if(type==='cactus') p.t=3;
   if(type==='peashooter'||type==='snowpea') p.t=1.2;
-  if(type==='repeater'){ p.t=0.3; p.burst=0; }
+  if(type==='repeater'||type==='cherrymachinegun'||type==='doommachinegun'||type==='firemachinegun'||type==='icemachinegun'||type==='charmmachinegun'||type==='ultcannon'||type==='peacannon'){ p.t=0.05; p.burst=0; p.ultiT=30; p.ulti=0; }
   if(type==='threepeater') p.t=1.2;
   if(type==='melonpult') p.t=2.5;
   if(type==='cherrybomb') p.t=1.3;
+  if(type==='hypnotoad') p.t=0.35;
   if(type==='spikeweed') p.t=0.55;
+  if(type==='jalapeno') p.t=1.2;
+  if(type==='iceshroom') p.t=0.8;
+  if(type==='doomshroom') p.t=1.2;
+  if(type==='obsidianjalapeno') p.t=1.5;
   plants.push(p);
 }
 function removePlant(p){ p.dead=true; }
 function killZombie(z){
   if(z.dead) return;
-  z.dead=true; killed++;
+  z.dead=true;
   effects.push({type:'poof',x:z.x+22,y:cy(z.row,0)-50+50,t:0.35});
-  if(Math.random()<0.13) suns.push({x:z.x+22, y:cy(z.row,0)-50+50, ty:cy(z.row,0)-50+60, val:25, t:9, fall:false});
+  if(z.player) return; // 自放的僵尸不计击杀统计、不掉阳光
+  killed++;
+  if(Math.random()<0.13) suns.push({x:z.x+22, y:cy(z.row,0)-50+50, ty:cy(z.row,0)-50+60, val:2500, t:9, fall:false});
 }
 function damageZombie(z,dmg){ z.hp-=dmg; if(z.hp<=0) killZombie(z); }
 
-function makeFallingSun(){ suns.push({x:rnd(BL+30,W-70), y:-30, ty:rnd(BT+10,BT+ROWS*CELL-20), val:25, t:10, fall:true}); }
+function makeFallingSun(){ suns.push({x:rnd(BL+30,W-70), y:-30, ty:rnd(BT+10,BT+ROWS*CELL-20), val:2500, t:10, fall:true}); }
 function spawnPlantFood(){
   const r=Math.floor(Math.random()*ROWS), c=Math.floor(Math.random()*COLS);
   plantFoodDrops.push({row:r, col:c, x:cx(r,c), y:cy(r,c)-35, t:0});
@@ -346,7 +543,7 @@ function update(dt){
   if(screen!=='play'||paused) return;
   time+=dt;
   // 刷僵尸
-  while(spawnQueue.length && time>=spawnQueue[0].t){ spawnZombie(spawnQueue.shift().type); }
+  while(spawnQueue.length && time>=spawnQueue[0].t){ const it=spawnQueue.shift(); spawnZombie(it.type, it.boss); }
   // 波次横幅
   if(bannerTimes.length && time>=bannerTimes[0]){ bannerTimes.shift(); banner={t:2.5}; sndWave(); }
   if(banner) banner.t-=dt;
@@ -357,7 +554,7 @@ function update(dt){
   if(dave.next<=0){ daveSay(DAVE_TIPS[Math.floor(Math.random()*DAVE_TIPS.length)]); dave.next=rnd(18,30); }
   // 阳光掉落
   sunFallTimer-=dt;
-  if(sunFallTimer<=0){ makeFallingSun(); sunFallTimer=rnd(8.5,11); }
+  if(sunFallTimer<=0) sunFallTimer=rnd(8.5,11); // 自然阳光生成已禁用
   updateSuns(dt);
   updatePlants(dt);
   updateProjectiles(dt);
@@ -366,7 +563,8 @@ function update(dt){
   updateEffects(dt);
   // 能量豆 & 金克拉
   plantFoodTimer-=dt;
-  if(plantFoodTimer<=0){ plantFoodTimer=30; plantFoodDrops=[]; spawnPlantFood(); }  // 每30秒必定刷新一粒
+  // 能量豆已禁用：不再生成
+  if(plantFoodTimer<=0) plantFoodTimer=30;
   for(const pf of plantFoodDrops) pf.t+=dt;
   plantFoodDrops=plantFoodDrops.filter(pf=>pf.t<5);   // 5秒无人拖拽就消失
   goldTimer-=dt;
@@ -376,7 +574,9 @@ function update(dt){
   // 冷却
   for(const t in pcd) pcd[t]=Math.max(0,pcd[t]-dt);
   // 胜负判定
-  if(screen==='play' && spawnQueue.length===0 && zombies.every(z=>z.dead)) winLevel();
+  if(screen==='play' && spawnQueue.length===0 && zombies.every(z=>z.dead||z.player)){
+    if(LEVELS[level]&&LEVELS[level].endless) nextEndlessRound(); else winLevel();
+  }
   updateHUD();
 }
 function updateSuns(dt){
@@ -393,7 +593,7 @@ function updatePlants(dt){
     if(p.powered>0) p.powered=Math.max(0,p.powered-dt);
     switch(p.type){
       case 'sunflower':
-        if(p.t<=0){ suns.push({x:p.cx()+rnd(-18,18), y:p.cy()+rnd(-16,4), ty:p.cy()+34, val:25, t:9, fall:false}); p.t=rnd(6.5,9.5); }
+        if(p.t<=0){ suns.push({x:p.cx()+rnd(-18,18), y:p.cy()+rnd(-16,4), ty:p.cy()+34, val:2500, t:9, fall:false}); p.t=rnd(6.5,9.5); }
         break;
       case 'peashooter':
         if(p.t<=0){ firePea(p, p.row); p.t=p.powered>0?0.3:1.5; }
@@ -402,7 +602,16 @@ function updatePlants(dt){
         if(p.t<=0){ firePea(p, p.row, 'snow'); p.t=p.powered>0?0.3:1.5; }
         break;
       case 'repeater':
-        if(p.t<=0){ firePea(p, p.row); p.burst=(p.burst||0)+1; p.t=p.burst>=2?(p.burst=0,(p.powered>0?0.3:1.4)):0.13; }
+        p.ultiT=(p.ultiT||0)-dt;
+        if(p.ultiT<=0&&!p.ulti){ p.ulti=1000; p.ultiT=30; effects.push({type:'powerup',x:p.cx(),y:p.cy(),t:1.2}); }
+        if(p.ulti>0){
+          firePea(p, p.row); p.ulti--;
+          p.t=0.012;
+          if(p.ulti===0) p.burst=0;
+        } else if(p.t<=0){
+          firePea(p, p.row); p.burst=(p.burst||0)+1;
+          p.t=p.burst>=10?(p.burst=0,0.8):0.05;
+        }
         break;
       case 'threepeater':
         if(p.t<=0){
@@ -427,19 +636,188 @@ function updatePlants(dt){
           if(near){ explodeAt(p.row,p.col,p.powered>0?4500:900); effects.push({type:'boom',x:p.cx(),y:p.cy(),t:0.55}); p.dead=true; sndExplode(); }
         }
         break;
+      case 'magictater': // 魔术洋芋：埋地后魅惑踩到它的僵尸
+        if(p.armT>0){ p.armT-=dt; if(p.armT<=0) p.armed=true; }
+        if(p.armed){
+          let best=null,bd=1e9;
+          for(const z of zombies){
+            if(z.dead||z.charmed) continue;
+            if(z.row!==p.row) continue;
+            if(Math.abs(colAt(z.x)-p.col)>1) continue;
+            const d=Math.abs(z.x-p.cx());
+            if(d<bd){bd=d;best=z;}
+          }
+          if(best){
+            best.charmed=true; best.dmg=Math.max(best.dmg,30);
+            effects.push({type:'powerup',x:best.x,y:cy(best.row,0)-50+50,t:1});
+            sndChomp();
+            p.dead=true;
+          }
+        }
+        break;
+      case 'cactus': // 仙人掌：每3秒发射一枚穿透尖刺
+        if(p.t<=0){ fireSpike(p,p.row); p.t=p.powered>0?0.6:3; }
+        break;
       case 'spikeweed':
         if(p.t<=0){
           for(const z of zombies) if(!z.dead&&z.row===p.row&&colAt(z.x)===p.col) damageZombie(z,p.powered>0?150:30);
           p.t=p.powered>0?0.11:0.55;
         }
         break;
+      case 'hypnotoad':
+        if(p.t<=0){
+          let best=null,bd=1e9;
+          for(const z of zombies){
+            if(z.dead||z.charmed) continue;
+            // 魅惑范围：蘑菇周围 3x3 格（僵尸必须走进范围内才会被魅惑）
+            if(Math.abs(z.row-p.row)>1) continue;
+            const zc=colAt(z.x);
+            if(Math.abs(zc-p.col)>1) continue;
+            const d=Math.abs(z.x-p.cx());
+            if(d<bd){bd=d;best=z;}
+          }
+          if(best){
+            best.charmed=true; best.dmg=Math.max(best.dmg,30);
+            effects.push({type:'powerup',x:best.x,y:cy(best.row,0)-50+50,t:1});
+            sndChomp();
+            p.dead=true; // 成功魅惑后消失
+          } else {
+            p.t=0.5; // 场上暂无僵尸，保留魅惑菇等待目标
+          }
+        }
+        break;
+      case 'cherrypea': // 樱桃豌豆：豌豆×2 伤害
+        if(p.t<=0){ firePea(p,p.row,0,'pea',40); p.t=p.powered>0?0.3:1.5; }
+        break;
+      case 'supercherry': // 超级樱桃豌豆：发射樱桃炸弹弹
+        if(p.t<=0){
+          const z=zombies.filter(z=>!z.dead&&z.row===p.row&&z.x>p.cx()-10).sort((a,b)=>a.x-b.x)[0];
+          if(z) fireCherry(p,p.row,180,1);
+          p.t=p.powered>0?0.5:2;
+        }
+        break;
+      case 'doublepea': // 双发豌豆
+        if(p.t<=0){ firePea(p,p.row,-6,'pea',20); firePea(p,p.row,6,'pea',20); p.t=p.powered>0?0.3:1.5; }
+        break;
+      case 'triplepea': // 三发豌豆
+        if(p.t<=0){ firePea(p,p.row,-13,'pea',20); firePea(p,p.row,0,'pea',20); firePea(p,p.row,13,'pea',20); p.t=p.powered>0?0.3:1.5; }
+        break;
+      case 'doublecherry': // 双发樱桃：两发樱桃弹
+        if(p.t<=0){
+          const z=zombies.filter(z=>!z.dead&&z.row===p.row&&z.x>p.cx()-10).sort((a,b)=>a.x-b.x)[0];
+          if(z) fireCherry(p,p.row,180,1);
+          p.t=p.powered>0?0.5:2.2;
+        }
+        break;
+      case 'doublesupercherry': // 双发超级樱桃：两发大范围樱桃弹
+        if(p.t<=0){
+          const z=zombies.filter(z=>!z.dead&&z.row===p.row&&z.x>p.cx()-10).sort((a,b)=>a.x-b.x)[0];
+          if(z) fireCherry(p,p.row,360,2);
+          p.t=p.powered>0?0.5:2.2;
+        }
+        break;
+      case 'charmpea': // 魅惑菇豌豆：发射魅惑弹
+        if(p.t<=0){ fireCharm(p,p.row); p.t=1.5; }
+        break;
+      case 'charmdouble': // 魅惑双发：两发魅惑弹
+        if(p.t<=0){ fireCharm(p,p.row); fireCharm(p,p.row); p.t=1.6; }
+        break;
+      case 'cherrymachinegun': // 樱桃机枪：连发樱桃弹 + 30秒大招千发
+        p.ultiT=(p.ultiT||0)-dt;
+        if(p.ultiT<=0&&!p.ulti){ p.ulti=1000; p.ultiT=30; effects.push({type:'powerup',x:p.cx(),y:p.cy(),t:1.2}); }
+        if(p.ulti>0){
+          fireCherry(p,p.row,150,1); p.ulti--;
+          p.t=0.012;
+          if(p.ulti===0) p.burst=0;
+        } else if(p.t<=0){
+          fireCherry(p,p.row,150,1); p.burst=(p.burst||0)+1;
+          p.t=p.burst>=10?(p.burst=0,0.8):0.18;
+        }
+        break;
+      case 'jalapeno': // 火爆辣椒：烧毁整行僵尸
+        if(p.t<=0){
+          for(const z of zombies) if(!z.dead&&z.row===p.row) damageZombie(z,1e9);
+          effects.push({type:'boom',x:cx(p.row,4),y:cy(p.row,0)-50+50,t:0.7});
+          p.dead=true; sndExplode();
+        }
+        break;
+      case 'iceshroom': // 寒冰菇：冰冻全场僵尸
+        if(p.t<=0){
+          for(const z of zombies){
+            if(z.dead) continue;
+            z.slow=8; damageZombie(z,p.powered>0?400:40);
+          }
+          effects.push({type:'iceburst',x:p.cx(),y:p.cy(),t:0.8});
+          p.dead=true; sndChomp();
+        }
+        break;
+      case 'doomshroom': // 毁灭菇：全屏大爆炸 + 弹坑
+        if(p.t<=0){
+          for(const z of zombies) damageZombie(z,1e9);
+          craters.push({row:p.row,col:p.col,until:time+12});
+          effects.push({type:'boom',x:p.cx(),y:p.cy(),t:0.9});
+          p.dead=true; sndExplode();
+        }
+        break;
+      case 'doommachinegun': // 毁灭机枪
+      case 'firemachinegun': // 火焰机枪
+      case 'icemachinegun': // 寒冰机枪
+      case 'charmmachinegun': // 魅惑机枪
+        p.ultiT=(p.ultiT||0)-dt;
+        if(p.ultiT<=0&&!p.ulti){ p.ulti=1000; p.ultiT=30; effects.push({type:'powerup',x:p.cx(),y:p.cy(),t:1.2}); }
+        if(p.ulti>0){
+          fireFusionGun(p); p.ulti--;
+          p.t=0.012;
+          if(p.ulti===0) p.burst=0;
+        } else if(p.t<=0){
+          fireFusionGun(p); p.burst=(p.burst||0)+1;
+          p.t=p.burst>=10?(p.burst=0,0.8):0.18;
+        }
+        break;
+      case 'obsidianjalapeno': // 黑曜石辣椒：发射黑曜石炮弹
+        if(p.t<=0){
+          const z=zombies.filter(z=>!z.dead&&z.row===p.row&&z.x>p.cx()-10).sort((a,b)=>a.x-b.x)[0];
+          if(z) projectiles.push({kind:'doom',row:p.row,x:p.cx()+20,y:cy(p.row,0)-50+50,vx:330,dmg:1e9,radius:1,dead:false});
+          p.t=p.powered>0?0.4:2;
+        }
+        break;
+      case 'ultcannon': // 究极炮台：连发黑曜石炮弹 + 大招千发
+        p.ultiT=(p.ultiT||0)-dt;
+        if(p.ultiT<=0&&!p.ulti){ p.ulti=1000; p.ultiT=30; effects.push({type:'powerup',x:p.cx(),y:p.cy(),t:1.2}); }
+        if(p.ulti>0){
+          projectiles.push({kind:'doom',row:p.row,x:p.cx()+20,y:cy(p.row,0)-50+50,vx:330,dmg:1e8,radius:1,dead:false});
+          p.ulti--; p.t=0.012;
+          if(p.ulti===0) p.burst=0;
+        } else if(p.t<=0){
+          projectiles.push({kind:'doom',row:p.row,x:p.cx()+20,y:cy(p.row,0)-50+50,vx:330,dmg:1e8,radius:1,dead:false});
+          p.burst=(p.burst||0)+1;
+          p.t=p.burst>=10?(p.burst=0,0.8):0.18;
+        }
+        break;
+      case 'peacannon': // 豌豆炮台：三行连发豌豆 + 大招千发
+        p.ultiT=(p.ultiT||0)-dt;
+        if(p.ultiT<=0&&!p.ulti){ p.ulti=1000; p.ultiT=30; effects.push({type:'powerup',x:p.cx(),y:p.cy(),t:1.2}); }
+        if(p.ulti>0){
+          for(let r=Math.max(0,p.row-1);r<=Math.min(ROWS-1,p.row+1);r++) firePea(p,r,(r-p.row)*10);
+          p.ulti--; p.t=0.012;
+          if(p.ulti===0) p.burst=0;
+        } else if(p.t<=0){
+          for(let r=Math.max(0,p.row-1);r<=Math.min(ROWS-1,p.row+1);r++) firePea(p,r,(r-p.row)*10);
+          p.burst=(p.burst||0)+1;
+          p.t=p.burst>=10?(p.burst=0,0.8):0.18;
+        }
+        break;
     }
   }
   plants=plants.filter(p=>!p.dead);
 }
-function firePea(p,row,dx=0){
-  const kind=p.type==='snowpea'?'snow':'pea';
-  projectiles.push({kind,row,x:p.cx()+28+dx,y:cy(row,0)-50+50,vx:300,dmg:kind==='pea'?20:20,dead:false});
+function firePea(p,row,dx=0,kind='pea',dmg=20){
+  projectiles.push({kind,row,x:p.cx()+28+dx,y:cy(row,0)-50+50,vx:300,dmg,dead:false});
+  sndShoot();
+}
+function fireSpike(p,row){
+  // 仙人掌尖刺：飞行快，命中僵尸不消失，可无限穿透整行
+  projectiles.push({kind:'spike',row,x:p.cx()+28,y:cy(row,0)-50+50,vx:600,dmg:20,hit:[],dead:false});
   sndShoot();
 }
 function lobMelon(p,z){
@@ -455,6 +833,25 @@ function splashMelon(m){
 function explodeAt(row,col,dmg){
   for(const z of zombies) if(!z.dead&&Math.abs(z.row-row)<=1&&Math.abs(colAt(z.x)-col)<=1) damageZombie(z,dmg);
 }
+function explodeRadius(row,col,dmg,radius=1){
+  for(const z of zombies){
+    if(!z.dead&&Math.abs(z.row-row)<=radius&&Math.abs(colAt(z.x)-col)<=radius) damageZombie(z,dmg);
+  }
+}
+function fireCherry(p,row,dmg=180,radius=1){
+  projectiles.push({kind:'cherry',row,x:p.cx()+20,y:cy(row,0)-50+50,vx:320,dmg,radius,dead:false});
+  sndLob();
+}
+function fireCharm(p,row){
+  projectiles.push({kind:'charm',row,x:p.cx()+28,y:cy(row,0)-50+50,vx:300,dmg:20,dead:false});
+  sndShoot();
+}
+function fireFusionGun(p){
+  if(p.type==='doommachinegun') projectiles.push({kind:'doom',row:p.row,x:p.cx()+20,y:cy(p.row,0)-50+50,vx:320,dmg:300,radius:1,dead:false});
+  else if(p.type==='firemachinegun') firePea(p,p.row,0,'fire',60);
+  else if(p.type==='icemachinegun') firePea(p,p.row,0,'snow',30);
+  else fireCharm(p,p.row);
+}
 function updateProjectiles(dt){
   for(const p of projectiles){
     if(p.kind==='melon'){
@@ -464,10 +861,71 @@ function updateProjectiles(dt){
       if(k>=1){ splashMelon(p); p.dead=true; }
       continue;
     }
+    if(p.kind==='spike'){ // 仙人掌尖刺：命中后不消失，穿透整行僵尸（每只只受一次伤害）
+      p.x+=p.vx*dt;
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row||p.hit.includes(z)) continue;
+        if(p.x>=z.x-8&&p.x<=z.x+42){
+          p.hit.push(z);
+          damageZombie(z,p.dmg);
+          effects.push({type:'splat',x:p.x,y:p.y,t:0.18});
+        }
+      }
+      if(p.x>W+30) p.dead=true;
+      continue;
+    }
+    if(p.kind==='cherry'||p.kind==='charm'){
+      p.x+=p.vx*dt;
+      let hit=null;
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row) continue;
+        if(p.x>=z.x-8&&p.x<=z.x+42){ if(!hit||z.x<hit.x) hit=z; }
+      }
+      if(hit){
+        if(p.kind==='cherry'){
+          explodeRadius(p.row,colAt(hit.x),p.dmg,p.radius||1);
+          effects.push({type:'boom',x:hit.x,y:cy(hit.row,0)-50+50,t:0.4});
+        } else {
+          if(!hit.charmed){
+            hit.charmed=true; hit.dmg=Math.max(hit.dmg,30);
+            effects.push({type:'powerup',x:hit.x,y:cy(hit.row,0)-50+50,t:1});
+            sndChomp();
+          }
+        }
+        p.dead=true;
+      } else if(p.x>W+30) p.dead=true;
+      continue;
+    }
+    if(p.kind==='doom'){
+      p.x+=p.vx*dt;
+      let hit=null;
+      for(const z of zombies){
+        if(z.dead||z.row!==p.row) continue;
+        if(p.x>=z.x-8&&p.x<=z.x+42){ if(!hit||z.x<hit.x) hit=z; }
+      }
+      if(hit){
+        explodeRadius(p.row,colAt(hit.x),p.dmg,p.radius||1);
+        effects.push({type:'boom',x:hit.x,y:cy(hit.row,0)-50+50,t:0.4});
+        p.dead=true;
+      } else if(p.x>W+30) p.dead=true;
+      continue;
+    }
     p.x+=p.vx*dt;
-    if(p.kind==='pea'){
+    if(p.kind==='pea'||p.kind==='fire'||p.kind==='obsidian'){
       const c=colAt(p.x);
-      if(c>=0&&c<COLS&&plantAt(p.row,c)&&plantAt(p.row,c).type==='torchwood'){ p.kind='fire'; p.dmg=40; }
+      if(c>=0&&c<COLS){
+        const tp=plantAt(p.row,c);
+        if(tp&&!tp.dead&&(tp.type==='torchwood'||tp.type==='obsidian')){
+          if(tp.type==='obsidian'&&p.kind!=='obsidian'){
+            p.kind='obsidian'; p.base=20*1000000; p.power=0; p.dmg=p.base;
+          } else {
+            if(p.base===undefined) p.base=20;
+            p.kind=p.kind==='obsidian'?'obsidian':'fire';
+            p.power=(p.power||0)+1;
+            p.dmg=p.base*Math.pow(2,p.power);
+          }
+        }
+      }
     }
     let hit=null;
     for(const z of zombies){
@@ -485,6 +943,25 @@ function updateZombies(dt){
     z.wob+=dt*4;
     if(z.slow>0) z.slow-=dt;
     const sp=z.speed*(z.slow>0?0.35:1);
+    // 魅惑僵尸：反方向撤退（向右走回出场方向），遇到同伴会停下啃食
+    if(z.charmed){
+      let prey=null;
+      for(const o of zombies){
+        if(o===z||o.dead||o.charmed) continue;
+        if(o.row===z.row&&o.x>=z.x&&o.x-z.x<55){ if(!prey||o.x<prey.x) prey=o; }
+      }
+      if(prey){
+        z.biteT-=dt;
+        if(z.biteT<=0){
+          damageZombie(prey,Math.max(40,z.dmg)); z.biteT=z.biteCd;
+          effects.push({type:'chomp',x:prey.x,y:cy(prey.row,0)-50+50,t:0.25});
+        }
+      } else {
+        z.x+=sp*dt;
+      }
+      if(z.x>W+60) z.dead=true; // 撤退离开战场（右侧出场）
+      continue;
+    }
     // 找前方要啃的植物（地刺不挡路）
     let target=null;
     for(const p of plants){
@@ -501,6 +978,11 @@ function updateZombies(dt){
       }
     } else {
       z.x-=sp*dt;
+    }
+    // 玩家自放的僵尸：不触发小车和失败，走进房子处自动离场
+    if(z.player){
+      if(z.x<BL-90) z.dead=true;
+      continue;
     }
     // 小车触发 / 失败
     if(z.x<BL-45){
@@ -558,6 +1040,17 @@ function draw(){
   for(const pf of plantFoodDrops) drawPlantFood(pf);
   for(const gd of goldDrops) drawGold(gd);
   if(dragItem) drawDragItem();
+  if(gloveDrag) drawGloveDrag();
+  // 毁灭菇弹坑（焦土）
+  for(const cr of craters){
+    const remain=cr.until-time;
+    if(remain<=0) continue;
+    ctx.fillStyle='rgba(30,20,10,0.55)';
+    ctx.fillRect(BL+cr.col*CELL+4,BT+cr.row*CELL+4,CELL-8,CELL-8);
+    ctx.strokeStyle='rgba(120,90,50,0.8)'; ctx.lineWidth=2; ctx.strokeRect(BL+cr.col*CELL+4,BT+cr.row*CELL+4,CELL-8,CELL-8);
+    ctx.font='15px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(255,220,150,0.75)'; ctx.fillText('⏳'+Math.ceil(remain)+'s', BL+cr.col*CELL+CELL/2, BT+cr.row*CELL+CELL/2);
+  }
   // 特效
   for(const e of effects) drawEffect(e);
   // 戴夫 NPC（站在房子前，最上层）
@@ -589,7 +1082,9 @@ function drawPlant(p){
       if(drawPlantImage(p)){ break; }
       drawShooter(0,0,'#3fae49'); break;
     case 'snowpea': drawShooter(0,0,'#6ecbe0',true); break;
-    case 'repeater': drawShooter(0,0,'#3fae49',false,2); break;
+    case 'repeater':
+      if(p.ulti>0){ ctx.strokeStyle='rgba(255,120,50,'+(0.5+0.5*Math.sin(t*22))+')'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(0,0,42,0,7); ctx.stroke(); }
+      drawShooter(0,0,'#3fae49',false,2); break;
     case 'threepeater': drawShooter(0,0,'#3fae49',false,3); break;
     case 'cherrybomb':
       if(drawPlantImage(p)){
@@ -601,10 +1096,104 @@ function drawPlant(p){
       drawEmoji('🥔',42);
       if(p.armed){ ctx.fillStyle='rgba(255,60,60,'+(0.5+0.4*Math.sin(t*8))+')'; ctx.beginPath(); ctx.arc(0,0,30,0,7); ctx.fill(); }
       break;
+    case 'magictater':
+      drawEmoji('🥔',42);
+      if(p.armed){
+        ctx.fillStyle='rgba(150,80,255,'+(0.4+0.3*Math.sin(t*8))+')'; ctx.beginPath(); ctx.arc(0,0,32,0,7); ctx.fill();
+        drawEmoji('✨',16,0,-24);
+      }
+      break;
     case 'wallnut': if(!drawPlantImage(p)) drawEmoji('🥜',46); break;
+    case 'cactus': drawEmoji('🌵',48); break;
     case 'spikeweed': if(!drawPlantImage(p)) drawSpikeweed(0,0,t); break;
     case 'torchwood': drawEmoji('🔥',48); break;
+    case 'obsidian':
+      ctx.fillStyle='#2b1b4d'; ctx.fillRect(-7,-14,14,24);
+      ctx.fillStyle='rgba(150,80,255,.9)'; ctx.beginPath(); ctx.ellipse(0,-24,9,15,0,0,7); ctx.fill();
+      ctx.fillStyle='rgba(230,200,255,.95)'; ctx.beginPath(); ctx.ellipse(0,-20,5,8,0,0,7); ctx.fill();
+      ctx.strokeStyle='rgba(150,80,255,'+(0.35+0.3*Math.sin(t*5))+')'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,40,0,7); ctx.stroke();
+      break;
     case 'melonpult': if(!drawPlantImage(p)) drawEmoji('🍉',46); break;
+    case 'hypnotoad':
+      if(!drawPlantImage(p)){
+        ctx.save();
+        ctx.globalAlpha=0.22+0.14*Math.sin(time*4);
+        ctx.fillStyle='#ff7ad9'; ctx.beginPath(); ctx.arc(0,0,32,0,7); ctx.fill();
+        ctx.restore();
+        drawEmoji('🍄',44);
+      }
+      break;
+    case 'cherrypea':
+      drawShooter(0,0,'#d94a4a'); drawEmoji('🍒',18,0,-16); break;
+    case 'supercherry':
+      drawShooter(0,0,'#b02b2b'); drawEmoji('🍒',18,0,-16);
+      if(Math.floor(t*6)%2===0) drawEmoji('💥',14,0,-2); break;
+    case 'doublepea': drawShooter(0,0,'#3fae49',false,2); break;
+    case 'triplepea': drawShooter(0,0,'#3fae49',false,3); break;
+    case 'doublecherry':
+      drawShooter(0,0,'#d94a4a',false,2); drawEmoji('🍒',18,0,-16); break;
+    case 'doublesupercherry':
+      drawShooter(0,0,'#b02b2b',false,2); drawEmoji('🍒',18,0,-16);
+      if(Math.floor(t*6)%2===0) drawEmoji('💥',14,0,-2); break;
+    case 'charmpea':
+      drawShooter(0,0,'#e060c0'); drawEmoji('🍄',18,0,-16); break;
+    case 'charmdouble':
+      drawShooter(0,0,'#e060c0',false,2); drawEmoji('🍄',18,0,-16); break;
+    case 'cherrymachinegun':
+      if(p.ulti>0){ ctx.strokeStyle='rgba(255,120,50,'+(0.5+0.5*Math.sin(t*22))+')'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(0,0,42,0,7); ctx.stroke(); }
+      drawShooter(0,0,'#d94a4a',false,2); drawEmoji('🍒',18,0,-16); break;
+    case 'tallnut':
+      // 高坚果：比普通坚果墙更高更壮
+      ctx.fillStyle='#d99b3f'; ctx.fillRect(-17,-42,34,76);
+      ctx.strokeStyle='#a06f22'; ctx.lineWidth=2; ctx.strokeRect(-17,-42,34,76);
+      ctx.fillStyle='#f0c880'; ctx.fillRect(-11,-34,7,7); ctx.fillRect(4,-34,7,7);
+      ctx.fillStyle='#8a5a1a'; ctx.fillRect(-7,-16,14,4);
+      ctx.fillStyle='#a06f22'; ctx.fillRect(-17,34,34,4);
+      drawEmoji('🥜',20,0,20); break;
+    case 'jalapeno':
+      ctx.fillStyle='#2e9e44'; ctx.fillRect(-5,-24,10,18);
+      ctx.fillStyle='#8a5a1a'; ctx.fillRect(-4,6,8,6);
+      ctx.fillStyle='#e63946'; ctx.beginPath(); ctx.ellipse(0,-28,7,18,0,0,7); ctx.fill();
+      ctx.fillStyle='#7a1020'; ctx.beginPath(); ctx.arc(4,-40,3,0,7); ctx.fill();
+      drawEmoji('🌶️',26,0,-12); break;
+    case 'iceshroom':
+      ctx.fillStyle='#bcdff0'; ctx.beginPath(); ctx.arc(0,4,22,0,7); ctx.fill();
+      ctx.fillStyle='#9cd4ee'; ctx.beginPath(); ctx.arc(0,-2,15,0,7); ctx.fill();
+      drawEmoji('🧊',28,0,-8); break;
+    case 'doomshroom':
+      ctx.fillStyle='#4b3a75'; ctx.beginPath(); ctx.arc(0,4,22,0,7); ctx.fill();
+      ctx.fillStyle='#3a2a5c'; ctx.beginPath(); ctx.arc(0,-2,15,0,7); ctx.fill();
+      drawEmoji('☠️',26,0,-8); break;
+    case 'fortnut':
+      ctx.fillStyle='#8f9bb3'; ctx.fillRect(-18,-32,36,64);
+      ctx.fillStyle='#aab4c9'; ctx.fillRect(-18,-32,36,10); ctx.fillRect(-18,10,36,6);
+      ctx.fillStyle='#6c7890'; ctx.fillRect(-8,-16,16,16); ctx.fillRect(-8,0,16,6);
+      drawEmoji('🏰',20,0,-18); break;
+    case 'obsidiancore':
+      ctx.fillStyle='#1a1a2e'; ctx.beginPath(); ctx.arc(0,0,20,0,7); ctx.fill();
+      ctx.strokeStyle='#5a3d9e'; ctx.lineWidth=3; ctx.stroke();
+      drawEmoji('⚫',22,0,0); break;
+    case 'obsidianjalapeno':
+      drawShooter(0,0,'#3a2a5c');
+      if(Math.floor(t*6)%2===0) drawEmoji('🌶️',18,0,-16); break;
+    case 'ultcannon':
+      if(p.ulti>0){ ctx.strokeStyle='rgba(180,90,255,'+(0.5+0.5*Math.sin(t*22))+')'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(0,0,44,0,7); ctx.stroke(); }
+      drawShooter(0,0,'#2a1a4c',false,2); drawEmoji('⚡',20,0,-18); break;
+    case 'peacannon':
+      if(p.ulti>0){ ctx.strokeStyle='rgba(255,215,80,'+(0.5+0.5*Math.sin(t*22))+')'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(0,0,44,0,7); ctx.stroke(); }
+      drawShooter(0,0,'#3fae49',false,3); drawEmoji('🎯',20,0,-18); break;
+    case 'doommachinegun':
+      if(p.ulti>0){ ctx.strokeStyle='rgba(120,60,200,'+(0.5+0.5*Math.sin(t*22))+')'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(0,0,42,0,7); ctx.stroke(); }
+      drawShooter(0,0,'#3a2a5c',false,2); drawEmoji('☠️',18,0,-16); break;
+    case 'firemachinegun':
+      if(p.ulti>0){ ctx.strokeStyle='rgba(255,120,50,'+(0.5+0.5*Math.sin(t*22))+')'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(0,0,42,0,7); ctx.stroke(); }
+      drawShooter(0,0,'#d94a2a',false,2); drawEmoji('🔥',18,0,-16); break;
+    case 'icemachinegun':
+      if(p.ulti>0){ ctx.strokeStyle='rgba(120,200,255,'+(0.5+0.5*Math.sin(t*22))+')'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(0,0,42,0,7); ctx.stroke(); }
+      drawShooter(0,0,'#3a9ec9',false,2); drawEmoji('🧊',18,0,-16); break;
+    case 'charmmachinegun':
+      if(p.ulti>0){ ctx.strokeStyle='rgba(255,120,200,'+(0.5+0.5*Math.sin(t*22))+')'; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(0,0,42,0,7); ctx.stroke(); }
+      drawShooter(0,0,'#c95a9e',false,2); drawEmoji('🍄',18,0,-16); break;
   }
   ctx.restore();
   // 血条
@@ -639,9 +1228,9 @@ function drawSpikeweed(x,y,t){
     ctx.beginPath(); ctx.moveTo(x+i*15-7,y+9); ctx.lineTo(x+i*15,y-h); ctx.lineTo(x+i*15+7,y+9); ctx.closePath(); ctx.fill();
   }
 }
-function drawEmoji(emoji,size){
+function drawEmoji(emoji,size,x=0,y=0){
   ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(emoji,0,2);
+  ctx.fillText(emoji,x,y+2);
 }
 // ==================== 戴夫 NPC ====================
 let dave={say:'', t:0, next:7};
@@ -654,6 +1243,9 @@ const DAVE_TIPS=[
   '🥜 坚果墙能帮你挡住僵尸的脚步！',
   '🔥 火炬树桩能让豌豆伤害翻倍！',
   '🍒 樱桃炸弹能炸飞一大片僵尸！',
+  '🧤 手套可以把植物搬到别处，搬到相同植物上还能直接合成！',
+  '🥔 魔术洋芋埋地后会魅惑踩到它的僵尸！',
+  '🎯 三线射手 + 机枪豌豆 = 豌豆炮台，三行连发！',
 ];
 function daveSay(s){ dave.say=s; dave.t=4.5; }
 function drawDave(){
@@ -708,9 +1300,14 @@ function drawZombie(z){
   const x=z.x, y=cy(z.row,0)-50+50;
   const bob=Math.sin(z.wob)*4;
   ctx.save(); ctx.translate(x+22,y+bob); ctx.rotate(Math.sin(z.wob)*0.06);
+  if(z.boss) ctx.scale(1.35,1.35);
+  if(z.type==='giant') ctx.scale(1.7,1.7);
   if(z.slow>0){ ctx.fillStyle='rgba(120,200,255,.35)'; ctx.beginPath(); ctx.arc(0,0,30,0,7); ctx.fill(); }
+  if(z.charmed){ ctx.fillStyle='rgba(255,80,200,.28)'; ctx.beginPath(); ctx.arc(0,0,34,0,7); ctx.fill(); }
   ctx.font='58px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('🧟',0,4);
+  if(z.charmed){ ctx.font='22px serif'; ctx.fillText('💗',-17,-14); ctx.fillText('💗',17,-14); }
+  if(z.boss){ ctx.font='26px serif'; ctx.fillText('👑',-17,-40); }
   // 帽子等配件
   if(z.type==='cone'){ ctx.fillStyle='#f0912f'; ctx.beginPath(); ctx.moveTo(-12,-24); ctx.lineTo(0,-44); ctx.lineTo(12,-24); ctx.closePath(); ctx.fill(); }
   if(z.type==='bucket'){ ctx.fillStyle='#b9c2c9'; ctx.beginPath(); ctx.moveTo(-14,-26); ctx.lineTo(-11,-42); ctx.lineTo(11,-42); ctx.lineTo(14,-26); ctx.closePath(); ctx.fill(); ctx.strokeStyle='#8b959c'; ctx.lineWidth=2; ctx.stroke(); }
@@ -720,12 +1317,13 @@ function drawZombie(z){
     ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-13,-32,5,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(13,-32,5,0,7); ctx.fill();
   }
   if(z.type==='runner'){ ctx.font='20px serif'; ctx.fillText('⚡',26,-8); }
+  if(z.type==='giant'){ ctx.font='30px serif'; ctx.fillText('🔨',32,6); ctx.font='16px serif'; ctx.fillText('💢',-24,-30); }
   ctx.restore();
   // 血条
   if(z.hp<z.maxHp){
-    const w=50, k=Math.max(0,z.hp/z.maxHp);
-    ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(x,y-52,w,7);
-    ctx.fillStyle=k>0.5?'#7ed957':k>0.25?'#ffd83d':'#e85b4a'; ctx.fillRect(x,y-52,w*k,7);
+    const w=z.boss?74:(z.type==='giant'?72:50), k=Math.max(0,z.hp/z.maxHp);
+    ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(x-w/2,y-52,w,7);
+    ctx.fillStyle=z.boss?'#ffb300':(k>0.5?'#7ed957':k>0.25?'#ffd83d':'#e85b4a'); ctx.fillRect(x-w/2,y-52,w*k,7);
   }
 }
 function drawProjectile(p){
@@ -733,10 +1331,29 @@ function drawProjectile(p){
     ctx.fillStyle='#3d9e4f'; ctx.beginPath(); ctx.arc(p.x,p.y,13,0,7); ctx.fill();
     ctx.strokeStyle='#2c7439'; ctx.lineWidth=2; ctx.stroke();
     ctx.fillStyle='#7dd18a'; ctx.beginPath(); ctx.arc(p.x-4,p.y-4,4,0,7); ctx.fill();
-  } else {
-    const c=p.kind==='fire'?'#ff7b2c':p.kind==='snow'?'#9fe0ff':'#4caf50';
-    ctx.fillStyle=c; ctx.beginPath(); ctx.arc(p.x,p.y, p.kind==='fire'?9:7,0,7); ctx.fill();
+  } else if(p.kind==='cherry'){
+    ctx.fillStyle='#d94a4a'; ctx.beginPath(); ctx.arc(p.x,p.y,11,0,7); ctx.fill();
+    ctx.strokeStyle='#8e1d1d'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(p.x-3,p.y-3,3,0,7); ctx.fill();
+    ctx.font='14px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🍒',p.x,p.y-1);
+  } else if(p.kind==='charm'){
+    ctx.fillStyle='#e060c0'; ctx.beginPath(); ctx.arc(p.x,p.y,8,0,7); ctx.fill();
     ctx.fillStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(p.x-2,p.y-2,2.5,0,7); ctx.fill();
+    ctx.font='13px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🍄',p.x,p.y-1);
+  } else if(p.kind==='spike'){
+    ctx.fillStyle='#6fc76f'; ctx.strokeStyle='#2f9e44'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(p.x+9,p.y); ctx.lineTo(p.x-7,p.y-6); ctx.lineTo(p.x-7,p.y+6); ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if(p.kind==='doom'){
+    ctx.fillStyle='#3a2a5c'; ctx.beginPath(); ctx.arc(p.x,p.y,12,0,7); ctx.fill();
+    ctx.strokeStyle='#7a4acf'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.8)'; ctx.beginPath(); ctx.arc(p.x-3,p.y-3,3,0,7); ctx.fill();
+    ctx.font='15px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('💀',p.x,p.y-1);
+  } else {
+    const isObs=p.kind==='obsidian';
+    const c=isObs?'#4a1d9e':p.kind==='fire'?'#ff7b2c':p.kind==='snow'?'#9fe0ff':'#4caf50';
+    ctx.fillStyle=c; ctx.beginPath(); ctx.arc(p.x,p.y, isObs?10:(p.kind==='fire'?9:7),0,7); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(p.x-2,p.y-2,2.5,0,7); ctx.fill();
+    if(isObs){ ctx.fillStyle='rgba(130,70,230,.35)'; ctx.beginPath(); ctx.arc(p.x,p.y,15,0,7); ctx.fill(); }
   }
 }
 function drawSun(s){
@@ -796,6 +1413,23 @@ function drawDragItem(){
   ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(tip, W/2, 25);
 }
+function drawGloveDrag(){
+  if(!gloveDrag) return;
+  const cell=cellFromXY(mouse.x,mouse.y);
+  if(cell){
+    const ok=canPlaceFree(gloveDrag.type,cell.row,cell.col);
+    ctx.fillStyle=ok?'rgba(255,255,255,.45)':'rgba(255,80,80,.45)';
+    ctx.fillRect(BL+cell.col*CELL,BT+cell.row*CELL,CELL,CELL);
+  }
+  ctx.font='42px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(PLANTS[gloveDrag.type].emoji, mouse.x+22, mouse.y+18);
+  ctx.font='bold 15px "Microsoft YaHei","PingFang SC",sans-serif';
+  const tip='点击目标格子放下植物（放到相同植物上可触发合成）';
+  const tw=ctx.measureText(tip).width, bw=tw+30;
+  ctx.fillStyle='rgba(30,40,60,.75)'; rr(W/2-bw/2,10,bw,30,15); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(tip, W/2, 25);
+}
 function drawMower(m){
   if(m.gone) return;
   const x=m.x, y=BT+m.row*CELL+50;
@@ -842,30 +1476,58 @@ function drawEffect(e){
     ctx.fillStyle=`rgba(140,230,150,${k*0.35})`;
     ctx.beginPath(); ctx.arc(0,0,(1-k)*30+4,0,7); ctx.fill();
     ctx.restore();
+  } else if(e.type==='iceburst'){
+    ctx.save(); ctx.translate(e.x,e.y);
+    const r=(1-k)*140+10;
+    ctx.fillStyle='rgba(160,220,255,'+k*0.5+')'; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,'+k+')'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(0,0,r*0.7,0,7); ctx.stroke();
+    ctx.restore();
   }
 }
 function drawGhost(){
   if(screen!=='play'||!selected) return;
+  if(selected.kind==='zombie'){ drawZombieGhost(); return; }
   if(selected.kind==='card'){
     const P=PLANTS[selected.type];
-    const ok=(r,c)=>!plantAt(r,c)&&!zombies.some(z=>!z.dead&&z.row===r&&z.x<cx(r,c));
-    // 所有可种植的空格轻微高亮
+    const recipeOf=(r,c)=>recipeOfCell(selected.type,r,c);
+    const ok=(r,c)=>{
+      if(recipeOf(r,c)) return true; // 可合成
+      if(plantAt(r,c)) return false; // 已有植物但不可合成
+      if(craters.some(cr=>cr.row===r&&cr.col===c&&time<cr.until)) return false; // 弹坑不能种
+      return selected.type==='hypnotoad'||!zombies.some(z=>!z.dead&&z.row===r&&z.x<cx(r,c));
+    };
+    // 所有可种植的空格轻微高亮（可合成的格子用黄色）
     ctx.globalAlpha=0.16;
-    ctx.fillStyle='#d9ffb3';
-    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(ok(r,c)) ctx.fillRect(BL+c*CELL,BT+r*CELL,CELL,CELL);
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      if(!ok(r,c)) continue;
+      ctx.fillStyle=recipeOf(r,c)?'#ffe066':'#d9ffb3';
+      ctx.fillRect(BL+c*CELL,BT+r*CELL,CELL,CELL);
+    }
     ctx.globalAlpha=1;
     // 鼠标所在格子的幽灵预览
     const cell=cellFromXY(mouse.x,mouse.y);
     if(cell&&ok(cell.row,cell.col)){
-      ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(BL+cell.col*CELL,BT+cell.row*CELL,CELL,CELL);
-      ctx.globalAlpha=0.85;
-      ctx.font='42px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(P.emoji, cx(cell.row,cell.col), cy(cell.row,cell.col)+2);
-      ctx.globalAlpha=1;
+      const b=plantAt(cell.row,cell.col);
+      const rec=recipeOf(cell.row,cell.col);
+      if(rec){
+        // 合成预览：显示 ✨ + 合成结果
+        ctx.fillStyle='rgba(255,220,80,.35)'; ctx.fillRect(BL+cell.col*CELL,BT+cell.row*CELL,CELL,CELL);
+        ctx.globalAlpha=0.9;
+        ctx.font='36px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText('✨', cx(cell.row,cell.col), cy(cell.row,cell.col)-18);
+        ctx.fillText(PLANTS[rec].emoji, cx(cell.row,cell.col), cy(cell.row,cell.col)+6);
+        ctx.globalAlpha=1;
+      } else {
+        ctx.fillStyle='rgba(255,255,255,.55)'; ctx.fillRect(BL+cell.col*CELL,BT+cell.row*CELL,CELL,CELL);
+        ctx.globalAlpha=0.85;
+        ctx.font='42px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(P.emoji, cx(cell.row,cell.col), cy(cell.row,cell.col)+2);
+        ctx.globalAlpha=1;
+      }
     }
     // 顶部操作提示条
     ctx.font='bold 15px "Microsoft YaHei","PingFang SC",sans-serif';
-    const tip='点击绿色草地格子种植 · 右键或 ESC 取消';
+    const tip='点击草地种植 · 放在已有植物上可合成升级 · 右键或 ESC 取消';
     const tw=ctx.measureText(tip).width;
     const bw=tw+30;
     ctx.fillStyle='rgba(30,60,40,.75)';
@@ -873,6 +1535,27 @@ function drawGhost(){
     ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText(tip, W/2, 25);
   }
+}
+function drawZombieGhost(){
+  // 选中僵尸卡时的放置预览
+  const cell=cellFromXY(mouse.x,mouse.y);
+  const Z=ZOMBIES[selected.type];
+  if(cell){
+    ctx.globalAlpha=0.5;
+    ctx.fillStyle='#ffb3b3'; ctx.fillRect(BL+cell.col*CELL,BT+cell.row*CELL,CELL,CELL);
+    ctx.globalAlpha=0.95;
+    ctx.font='38px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🧟',cx(cell.row,cell.col),cy(cell.row,cell.col));
+    ctx.globalAlpha=1;
+  }
+  ctx.font='bold 15px "Microsoft YaHei","PingFang SC",sans-serif';
+  const tip='点击草地放出一只 '+Z.name+'（可连点连放，场上最多 20 只） · 右键或 ESC 取消';
+  const tw=ctx.measureText(tip).width;
+  const bw=tw+30;
+  ctx.fillStyle='rgba(50,30,25,.8)';
+  rr(W/2-bw/2,10,bw,30,15); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(tip, W/2, 25);
 }
 
 // ==================== 音效 ====================
@@ -885,6 +1568,7 @@ function tone(f,d,type,v,when){ const a=ac(); if(!a)return; const o=a.createOsci
 const sndShoot=()=>tone(880,0.08,'square',0.045);
 const sndLob=()=>tone(420,0.12,'sine',0.05);
 const sndPlant=()=>{tone(320,0.12,'triangle',0.08); tone(480,0.1,'triangle',0.06,0.05);};
+const sndFusion=()=>{tone(520,0.1,'triangle',0.08); tone(780,0.1,'triangle',0.07,0.07); tone(1170,0.16,'triangle',0.06,0.14);};
 const sndSun=()=>{tone(1200,0.1,'sine',0.06); tone(1600,0.12,'sine',0.05,0.05);};
 const sndExplode=()=>{tone(90,0.5,'sawtooth',0.12); tone(60,0.6,'square',0.1,0.05);};
 const sndChomp=()=>tone(180,0.12,'sawtooth',0.05);
@@ -896,16 +1580,18 @@ const sndWin=()=>{tone(523,0.15,'triangle',0.08); tone(659,0.15,'triangle',0.08,
 
 // ==================== 界面 ====================
 const cardEls={};
+const zcardEls={};
 function buildCards(){
   const wrap=document.getElementById('cards');
-  const keys=['1','2','3','4','5','6','7','8','9','0','-','='];
-  PLANT_ORDER.forEach((t,i)=>{
+  const keys=['1','2','3','4','5','6','7','8','9','0','-','=','q','w','e','r','t','y'];
+  SLOT_PLANTS.forEach((t,i)=>{
     const P=PLANTS[t];
     const btn=document.createElement('button');
     btn.className='card'; btn.dataset.type=t;
     btn.innerHTML='<div class="ckey">'+keys[i]+'</div><div class="cemoji">'+P.emoji+'</div><div class="cname">'+P.name+'</div><div class="ccost">☀'+P.cost+'</div><div class="cd" style="height:0%"></div>';
     btn.onclick=()=>{
       ac();
+      cancelDrag(); // 切换卡片时把手套中的植物放回
       if(selected&&selected.kind==='card'&&selected.type===t){ selected=null; }
       else selected={kind:'card',type:t};
       updateHUD();
@@ -914,8 +1600,33 @@ function buildCards(){
   });
   const sh=document.getElementById('shovel');
   sh.onclick=()=>{ ac(); selected=selected&&selected.kind==='shovel'?null:{kind:'shovel'}; updateHUD(); };
+  document.getElementById('glove').onclick=()=>{ ac(); selected=selected&&selected.kind==='glove'?null:{kind:'glove'}; updateHUD(); };
   document.getElementById('pauseBtn').onclick=()=>{ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'▶':'⏸'; };
   document.getElementById('restartBtn').onclick=()=>{ if(screen==='play'||screen==='over') startLevel(level); };
+}
+function buildZombieCards(){
+  // 僵尸卡槽：选中后点击草地即可放僵尸，用于冲击自己的防线测试阵型
+  const wrap=document.getElementById('zcards');
+  const list=[
+    {type:'normal',   short:'普通', color:'#9aa7b4', tip:'普通僵尸 · 100血'},
+    {type:'cone',     short:'路障', color:'#e58b3a', tip:'路障僵尸 · 100血'},
+    {type:'bucket',   short:'铁桶', color:'#7aa3c9', tip:'铁桶僵尸 · 100血'},
+    {type:'runner',   short:'快速', color:'#8fd36a', tip:'快速僵尸 · 100血'},
+    {type:'football', short:'橄榄', color:'#e0574b', tip:'橄榄球僵尸 · 100血 · 高伤害'},
+  ];
+  list.forEach(it=>{
+    const b=document.createElement('button');
+    b.className='zcard'; b.title=it.tip;
+    b.innerHTML='<div class="zemoji">🧟</div><div class="zname">'+it.short+'</div>';
+    b.style.borderTopColor=it.color;
+    b.onclick=()=>{
+      ac();
+      if(selected&&selected.kind==='zombie'&&selected.type===it.type) selected=null;
+      else selected={kind:'zombie',type:it.type};
+      updateHUD();
+    };
+    wrap.appendChild(b); zcardEls[it.type]=b;
+  });
 }
 function updateHUD(){
   document.getElementById('sunCount').textContent=Math.floor(sun);
@@ -927,12 +1638,14 @@ function updateHUD(){
     el.classList.toggle('sel', !!(selected&&selected.kind==='card'&&selected.type===t));
   }
   document.getElementById('shovel').classList.toggle('sel', !!(selected&&selected.kind==='shovel'));
+  document.getElementById('glove').classList.toggle('sel', !!(selected&&selected.kind==='glove'));
+  for(const t in zcardEls) zcardEls[t].classList.toggle('sel', !!(selected&&selected.kind==='zombie'&&selected.type===t));
   document.getElementById('zombieLeft').textContent='🧟 '+Math.max(0,totalZombies-killed);
   document.getElementById('progFill').style.width=(totalZombies? killed/totalZombies*100:0)+'%';
 }
 function buildMenu(){
   const wrap=document.getElementById('levelBtns');
-  const descs=['初来乍到','路障登场','极速奔跑','铁桶来袭','橄榄球军团'];
+  const descs=['初来乍到','路障登场','极速奔跑','铁桶来袭','橄榄球军团','混合攻势','铁桶围城','钢铁洪流','全面进攻','终极决战'];
   LEVELS.forEach((L,i)=>{
     const b=document.createElement('button');
     b.className='lvlbtn';
@@ -940,6 +1653,12 @@ function buildMenu(){
     b.onclick=()=>{ ac(); startLevel(i); };
     wrap.appendChild(b);
   });
+  // 无尽模式入口
+  const eb=document.createElement('button');
+  eb.className='lvlbtn';
+  eb.innerHTML='♾️ 无尽模式<small>无限波次 · 越打越强 · 巨人僵尸</small>';
+  eb.onclick=()=>{ ac(); startLevel(LEVELS.length-1); };
+  wrap.appendChild(eb);
 }
 
 // ==================== 输入 ====================
@@ -947,6 +1666,58 @@ function getPos(e){
   const rect=cv.getBoundingClientRect();
   const t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;
   return {x:(t.clientX-rect.left)*W/rect.width, y:(t.clientY-rect.top)*H/rect.height};
+}
+// 合成判定：该格放置 type 会合成什么（无则 null）
+function recipeOfCell(type,row,col){
+  const base=plantAt(row,col);
+  if(!base) return null;
+  let rec=FUSION[base.type]&&FUSION[base.type][type];
+  // 堡垒坚果特殊合成：[坚果][高坚果][坚果] 排列 + 魔术洋芋/土豆雷 → 堡垒坚果
+  if((type==='magictater'||type==='potatomine')&&base.type==='tallnut'){
+    const l=plantAt(row,col-1), r=plantAt(row,col+1);
+    if(l&&r&&l.type==='wallnut'&&r.type==='wallnut') rec='fortnut';
+  }
+  return rec||null;
+}
+// 通用放置/合成（free=true 表示不扣阳光，用于手套移动）
+function placePlant(type,row,col,free){
+  const P=PLANTS[type];
+  const base=plantAt(row,col);
+  const recipe=recipeOfCell(type,row,col);
+  if(recipe){
+    if(!free&&(sun<P.cost||pcd[type]>0)) return false;
+    if(!free) sun-=P.cost;
+    const bx=base.cx(), by=base.cy();
+    if(recipe==='fortnut'){
+      // 堡垒坚果吞噬两侧坚果墙合三为一
+      const l=plantAt(row,col-1), r=plantAt(row,col+1);
+      if(l) removePlant(l); if(r) removePlant(r);
+    }
+    removePlant(base);
+    addPlant(recipe,row,col);
+    pcd[type]=0; // 植物无冷却
+    sndFusion();
+    effects.push({type:'powerup',x:bx,y:by,t:1});
+    daveSay('✨ 合成 '+PLANTS[recipe].name+'！');
+    updateHUD();
+    return true;
+  }
+  // 毁灭菇弹坑内不能种植
+  if(craters.some(c=>c.row===row&&c.col===col&&time<c.until)) return false;
+  if(!free&&type!=='hypnotoad'&&zombies.some(z=>!z.dead&&z.row===row&&z.x<cx(row,col))) return false;
+  if(!free&&(sun<P.cost||pcd[type]>0)) return false;
+  if(!free) sun-=P.cost;
+  addPlant(type,row,col);
+  pcd[type]=0; // 植物无冷却
+  sndPlant(); updateHUD();
+  return true;
+}
+// 手套放置可行性（不消耗阳光）
+function canPlaceFree(type,row,col){
+  if(recipeOfCell(type,row,col)) return true;
+  if(plantAt(row,col)) return false;
+  if(craters.some(c=>c.row===row&&c.col===col&&time<c.until)) return false;
+  return true;
 }
 function onDown(e){
   e.preventDefault();
@@ -982,15 +1753,29 @@ function onDown(e){
     if(p){ removePlant(p); sndShovel(); }
     selected=null; updateHUD(); return;
   }
+  if(selected&&selected.kind==='glove'){
+    if(!gloveDrag){
+      const p=plantAt(cell.row,cell.col);
+      if(p){ gloveDrag={type:p.type,fromRow:p.row,fromCol:p.col}; removePlant(p); sndShovel(); }
+    } else {
+      const g=gloveDrag;
+      if(!placePlant(g.type,cell.row,cell.col,true)) placePlant(g.type,g.fromRow,g.fromCol,true); // 放不上去就放回原位
+      gloveDrag=null;
+    }
+    selected=null; updateHUD(); return;
+  }
   if(selected&&selected.kind==='card'){
-    const type=selected.type, P=PLANTS[type];
-    if(plantAt(cell.row,cell.col)) return;
-    if(zombies.some(z=>!z.dead&&z.row===cell.row&&z.x<cx(cell.row,cell.col))) return;
-    if(sun<P.cost||pcd[type]>0) return;
-    sun-=P.cost;
-    addPlant(type,cell.row,cell.col);
-    pcd[type]=P.cd;
-    sndPlant(); updateHUD();
+    const type=selected.type;
+    placePlant(type,cell.row,cell.col,false);
+    selected=null; updateHUD();
+  }
+  if(selected&&selected.kind==='zombie'){
+    // 放僵尸：场上玩家僵尸最多 20 只，点一次放一只（保留选择可连放）
+    let cnt=0;
+    for(const z of zombies) if(z.player&&!z.dead) cnt++;
+    if(cnt>=20){ daveSay('自放僵尸已满 20 只，先消灭一些再放吧！'); return; }
+    placePlayerZombie(selected.type,cell.row,cell.col);
+    sndWave();
   }
 }
 function onUp(e){
@@ -1026,6 +1811,10 @@ function cancelDrag(){
     else goldDrops.push(dragItem.item);
     dragItem=null;
   }
+  if(gloveDrag){ // 手套：把拾起的植物放回原位
+    placePlant(gloveDrag.type,gloveDrag.fromRow,gloveDrag.fromCol,true);
+    gloveDrag=null;
+  }
 }
 cv.addEventListener('mousedown',onDown);
 cv.addEventListener('touchstart',onDown,{passive:false});
@@ -1043,9 +1832,9 @@ cv.addEventListener('mouseup',onUp);
 cv.addEventListener('touchend',onUp);
 cv.addEventListener('contextmenu',e=>{ e.preventDefault(); cancelDrag(); selected=null; updateHUD(); });
 document.addEventListener('keydown',e=>{
-  const keys=['1','2','3','4','5','6','7','8','9','0','-','='];
+  const keys=['1','2','3','4','5','6','7','8','9','0','-','=','q','w','e','r','t','y'];
   const i=keys.indexOf(e.key);
-  if(i>=0&&i<PLANT_ORDER.length&&screen==='play'){ ac(); selected={kind:'card',type:PLANT_ORDER[i]}; updateHUD(); }
+  if(i>=0&&i<SLOT_PLANTS.length&&screen==='play'){ ac(); cancelDrag(); selected={kind:'card',type:SLOT_PLANTS[i]}; updateHUD(); }
   if(e.key==='Escape'){ cancelDrag(); selected=null; updateHUD(); }
   if(e.key==='p'||e.key==='P'){ if(screen==='play'){ paused=!paused; document.getElementById('pauseBtn').textContent=paused?'▶':'⏸'; } }
 });
@@ -1060,6 +1849,7 @@ function loop(now){
 }
 buildMenu();
 buildCards();
+buildZombieCards();
 requestAnimationFrame(loop);
 </script>
 </body>
